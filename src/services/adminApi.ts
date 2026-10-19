@@ -21,7 +21,13 @@ const ADMIN_KEY = 'homegrocery_admin_user';
  * 3. In production without VITE_API_BASE_URL, returns empty string and warns
  */
 export function getApiBaseUrl(): string {
-  const envBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL || '').trim();
+  const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
+  const envBase = (
+    env?.VITE_API_BASE_URL ||
+    env?.VITE_BACKEND_URL ||
+    env?.VITE_API_URL ||
+    ''
+  ).trim();
   if (envBase) {
     return envBase.replace(/\/+$/, '');
   }
