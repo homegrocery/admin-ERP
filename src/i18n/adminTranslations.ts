@@ -209,7 +209,31 @@ export const adminTranslations = {
     loading: 'Loading data...',
     errorTitle: 'Error',
     refresh: 'Refresh',
-    copiedToast: 'Copied to clipboard'
+    copiedToast: 'Copied to clipboard',
+
+    // Bulk Account Deletion & Audit Archival
+    btnDeleteAllOrdinaryUsers: 'Delete All Ordinary Users',
+    deleteAllModalTitle: 'Confirm Bulk Deletion of All Ordinary Users',
+    deleteAllWarning: 'EXTREME DANGER: This operation will permanently delete ALL non-admin ordinary user accounts, along with all their grocery lists, items, and sessions. The owner account (Santosh Koli - 9356755100) is strictly protected and will NOT be deleted.',
+    confirmPhraseBulkUsersLabel: 'Type "DELETE ALL ORDINARY USERS" to confirm:',
+    bulkUsersPhraseRequired: 'DELETE ALL ORDINARY USERS',
+    btnConfirmBulkDeleteUsers: 'Permanently Erase All Ordinary Users',
+    bulkDeleteUsersSuccess: 'Successfully purged all eligible ordinary user accounts.',
+    purgedUsersCount: 'Purged Users:',
+
+    btnArchiveLog: 'Archive',
+    archiveLogTooltip: 'Archive this entry from active view',
+    archiveSuccessToast: 'Audit entry moved to archive',
+    btnDeleteAllAuditLogs: 'Delete All Audit Logs',
+    deleteAllAuditModalTitle: 'Confirm Logical Archival of All Audit Logs',
+    deleteAllAuditWarning: 'This operation will archive all active audit entries and clear the active view. The audit history will be preserved immutably in the database archive, and a bulk-archive audit event will be recorded.',
+    confirmPhraseBulkAuditLabel: 'Type "DELETE ALL AUDIT LOGS" to confirm:',
+    bulkAuditPhraseRequired: 'DELETE ALL AUDIT LOGS',
+    btnConfirmBulkArchiveAudit: 'Archive All Active Logs',
+    bulkArchiveSuccess: 'All active audit entries have been archived.',
+    activeLogsTab: 'Active Logs',
+    archivedLogsTab: 'Archived Logs',
+    dateUnavailable: 'Date unavailable'
   },
   mr: {
     // App header & branding
@@ -419,6 +443,30 @@ export const adminTranslations = {
     loading: 'माहिती लोड होत आहे...',
     errorTitle: 'त्रुटी',
     refresh: 'रिफ्रेश करा',
-    copiedToast: 'क्लिपबोर्डवर कॉपी केले'
+    copiedToast: 'क्लिपबोर्डवर कॉपी केले',
+
+    // Bulk Account Deletion & Audit Archival
+    btnDeleteAllOrdinaryUsers: 'सर्व सामान्य वापरकर्ते हटवा',
+    deleteAllModalTitle: 'सर्व सामान्य वापरकर्ते कायमचे हटवण्याची खात्री करा',
+    deleteAllWarning: 'अति-धोकादायक कृती: हे ऑपरेशन सर्व सामान्य (non-admin) वापरकर्ता खाती आणि त्यांच्या सर्व किराणा याद्या, वस्तू व सेशन्स कायमचे नष्ट करेल. मुख्य मालक खाते (संतोष कोळी - ९३५६७५५१००) पूर्णपणे सुरक्षित राहील आणि हटवले जाणार नाही.',
+    confirmPhraseBulkUsersLabel: 'पुष्टीसाठी "DELETE ALL ORDINARY USERS" असे टाइप करा:',
+    bulkUsersPhraseRequired: 'DELETE ALL ORDINARY USERS',
+    btnConfirmBulkDeleteUsers: 'सर्व सामान्य खाती कायमची नष्ट करा',
+    bulkDeleteUsersSuccess: 'सर्व पात्र सामान्य वापरकर्ता खाती यशस्वीरित्या हटवली.',
+    purgedUsersCount: 'हटवलेली खाती:',
+
+    btnArchiveLog: 'हटवा / संग्रहित करा',
+    archiveLogTooltip: 'सक्रिय दृश्यातून ही नोंद संग्रहित करा',
+    archiveSuccessToast: 'ऑडिट नोंद संग्रहात हलवली',
+    btnDeleteAllAuditLogs: 'सर्व ऑडिट लॉग हटवा',
+    deleteAllAuditModalTitle: 'सर्व ऑडिट नोंदी संग्रहित करण्याची खात्री करा',
+    deleteAllAuditWarning: 'हे ऑपरेशन सक्रिय दृश्यातील सर्व ऑडिट नोंदी संग्रहित करेल. सर्व ऐतिहासिक नोंदी डेटाबेसमध्ये कायमस्वरूपी सुरक्षित राहतील आणि एक बल्क-आर्काइव्ह नोंद सक्रिय दिसेल.',
+    confirmPhraseBulkAuditLabel: 'पुष्टीसाठी "DELETE ALL AUDIT LOGS" असे टाइप करा:',
+    bulkAuditPhraseRequired: 'DELETE ALL AUDIT LOGS',
+    btnConfirmBulkArchiveAudit: 'सर्व सक्रिय नोंदी संग्रहित करा',
+    bulkArchiveSuccess: 'सर्व सक्रिय ऑडिट नोंदी यशस्वीरित्या संग्रहित केल्या.',
+    activeLogsTab: 'सक्रिय नोंदी',
+    archivedLogsTab: 'संग्रहित नोंदी',
+    dateUnavailable: 'तारीख अनुपलब्ध'
   }
 };

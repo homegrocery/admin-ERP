@@ -174,4 +174,115 @@ describe('Admin ERP API Client', () => {
     expect(calledUrl).toBe('https://home-grocery-api.onrender.com/api/admin/health');
     expect(calledUrl).not.toContain('/api/api');
   });
+
+  it('should call POST /api/admin/accounts/bulk-delete with confirmation phrase', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          success: true,
+          deletedCount: 5,
+          deletedAccountIds: ['u1', 'u2', 'u3', 'u4', 'u5'],
+          deletedAt: '2026-10-19T14:00:00.000Z',
+          cascadedTotals: { users: 5, shopping_lists: 3 }
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.bulkDeleteAccounts('DELETE ALL ORDINARY USERS', 5);
+    expect(res.deletedCount).toBe(5);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://home-grocery-api.onrender.com/api/admin/accounts/bulk-delete',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ confirmationPhrase: 'DELETE ALL ORDINARY USERS', expectedCount: 5 })
+      })
+    );
+  });
+
+  it('should call POST /api/admin/audit-logs/:id/archive to archive single log', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          success: true,
+          id: 'log-123',
+          archived_at: '2026-10-19T14:00:00.000Z'
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.archiveAuditLog('log-123');
+    expect(res.id).toBe('log-123');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://home-grocery-api.onrender.com/api/admin/audit-logs/log-123/archive',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('should call POST /api/admin/audit-logs/archive-all with confirmation phrase', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          success: true,
+          count: 42,
+          archived_at: '2026-10-19T14:00:00.000Z'
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.bulkArchiveAuditLogs('DELETE ALL AUDIT LOGS');
+    expect(res.count).toBe(42);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://home-grocery-api.onrender.com/api/admin/audit-logs/archive-all',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ confirmationPhrase: 'DELETE ALL AUDIT LOGS' })
+      })
+    );
+  });
+
+  it('should normalize created_at and timestamp in getAuditLogs results', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          logs: [
+            {
+              id: 'log-1',
+              action: 'ADMIN_LOGIN',
+              created_at: '2026-10-19T10:00:00.000Z',
+              admin_user_id: 'admin-1',
+              target_account_id: null,
+              target_mobile_number: null,
+              details: null,
+              ip_address: '127.0.0.1'
+            }
+          ],
+          total: 1,
+          page: 1,
+          limit: 20,
+          totalPages: 1
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.getAuditLogs({ showArchived: true });
+    expect(res.logs[0].created_at).toBe('2026-10-19T10:00:00.000Z');
+    expect(res.logs[0].timestamp).toBe('2026-10-19T10:00:00.000Z');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('showArchived=true'),
+      expect.any(Object)
+    );
+  });
 });
+

@@ -5,6 +5,8 @@ import type {
   AuditLogItem,
   ApprovedRecoveryResult,
   DeletionResult,
+  BulkDeletionResult,
+  AuditArchiveResult,
   VerificationMethod,
   RecoveryRequestStatus
 } from '../types/admin';
@@ -295,11 +297,40 @@ export const adminApi = {
     });
   },
 
+  async bulkDeleteAccounts(
+    confirmationPhrase: string,
+    expectedCount?: number
+  ): Promise<BulkDeletionResult> {
+    return this.request<BulkDeletionResult>('/api/admin/accounts/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({
+        confirmationPhrase,
+        expectedCount
+      })
+    });
+  },
+
+  async archiveAuditLog(id: string): Promise<AuditArchiveResult> {
+    return this.request<AuditArchiveResult>(`/api/admin/audit-logs/${id}/archive`, {
+      method: 'POST'
+    });
+  },
+
+  async bulkArchiveAuditLogs(confirmationPhrase: string): Promise<AuditArchiveResult> {
+    return this.request<AuditArchiveResult>('/api/admin/audit-logs/archive-all', {
+      method: 'POST',
+      body: JSON.stringify({
+        confirmationPhrase
+      })
+    });
+  },
+
   async getAuditLogs(params: {
     page?: number;
     limit?: number;
     action?: string;
     search?: string;
+    showArchived?: boolean;
   } = {}): Promise<{
     logs: AuditLogItem[];
     total: number;
@@ -312,7 +343,26 @@ export const adminApi = {
     if (params.limit) query.append('limit', String(params.limit));
     if (params.action) query.append('action', params.action);
     if (params.search) query.append('search', params.search);
+    if (params.showArchived) query.append('showArchived', 'true');
 
-    return this.request(`/api/admin/audit-logs?${query.toString()}`);
+    const res = await this.request<{
+      logs: AuditLogItem[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/api/admin/audit-logs?${query.toString()}`);
+
+    // Normalize each log item to ensure both created_at and timestamp are populated
+    const normalizedLogs = (res.logs || []).map(log => ({
+      ...log,
+      created_at: log.created_at || log.timestamp || '',
+      timestamp: log.timestamp || log.created_at || ''
+    }));
+
+    return {
+      ...res,
+      logs: normalizedLogs
+    };
   }
 };

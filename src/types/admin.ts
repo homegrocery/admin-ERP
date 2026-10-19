@@ -43,13 +43,17 @@ export interface RecoveryRequestItem {
 
 export interface AuditLogItem {
   id: string;
-  timestamp: string;
+  timestamp?: string;
+  created_at?: string;
   admin_user_id: string;
   action: string;
   target_account_id: string | null;
   target_mobile_number: string | null;
   details: string | null;
   ip_address: string | null;
+  is_archived?: number;
+  archived_at?: string | null;
+  admin_name?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -69,7 +73,26 @@ export interface ApprovedRecoveryResult {
 
 export interface DeletionResult {
   deletedAccountId: string;
-  confirmationId: string;
-  cascadedTables: Record<string, number>;
-  message: string;
+  confirmationId?: string;
+  cascadedTables?: Record<string, number>;
+  message?: string;
+  deletedAt?: string;
+  sqliteDeleted?: boolean;
+  firestoreDeleted?: boolean;
 }
+
+export interface BulkDeletionResult {
+  success: boolean;
+  deletedCount: number;
+  deletedAccountIds: string[];
+  deletedAt: string;
+  cascadedTotals: Record<string, number>;
+}
+
+export interface AuditArchiveResult {
+  success: boolean;
+  id?: string;
+  count?: number;
+  archived_at: string;
+}
+

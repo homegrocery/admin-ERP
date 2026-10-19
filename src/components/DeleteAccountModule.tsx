@@ -11,11 +11,12 @@ import {
   RefreshCw,
   X,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
-import type { AccountMetadata, DeletionResult } from '../types/admin';
+import type { AccountMetadata, DeletionResult, BulkDeletionResult } from '../types/admin';
 
 interface DeleteAccountModuleProps {
   lang: Language;
@@ -42,6 +43,44 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletionResult, setDeletionResult] = useState<DeletionResult | null>(null);
+
+  // Bulk deletion state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkPhrase, setBulkPhrase] = useState('');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
+  const [bulkDeletionResult, setBulkDeletionResult] = useState<BulkDeletionResult | null>(null);
+
+  const eligibleOrdinaryAccounts = accounts.filter(a => !isOwner(a));
+
+  const handleBulkDeleteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bulkPhrase.trim() !== 'DELETE ALL ORDINARY USERS') {
+      setBulkDeleteError(
+        lang === 'mr'
+          ? 'कृपया अचूक शब्द "DELETE ALL ORDINARY USERS" टाइप करा'
+          : 'Please type the exact phrase "DELETE ALL ORDINARY USERS"'
+      );
+      return;
+    }
+
+    setBulkDeleting(true);
+    setBulkDeleteError(null);
+    try {
+      const res = await adminApi.bulkDeleteAccounts(
+        bulkPhrase.trim(),
+        eligibleOrdinaryAccounts.length
+      );
+      setBulkDeletionResult(res);
+      setShowBulkModal(false);
+      setBulkPhrase('');
+      await fetchAccounts();
+    } catch (err: any) {
+      setBulkDeleteError(err.message || 'Failed to delete ordinary user accounts');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const fetchAccounts = async (searchOverride?: string) => {
     setLoadingAccounts(true);
@@ -122,10 +161,13 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
 
   const handleResetSuccess = () => {
     setDeletionResult(null);
+    setBulkDeletionResult(null);
     setTargetAccount(null);
     setConfirmMobile('');
     setConfirmPhrase('');
+    setBulkPhrase('');
     setDeleteError(null);
+    setBulkDeleteError(null);
     fetchAccounts();
   };
 
@@ -178,6 +220,21 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
             <span className="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
               {t.totalAccounts}: <strong className="font-mono text-rose-600">{totalAccounts}</strong>
             </span>
+            {eligibleOrdinaryAccounts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkPhrase('');
+                  setBulkDeleteError(null);
+                  setShowBulkModal(true);
+                }}
+                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                title={t.btnDeleteAllOrdinaryUsers}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t.btnDeleteAllOrdinaryUsers} ({eligibleOrdinaryAccounts.length})</span>
+              </button>
+            )}
             <button
               onClick={() => fetchAccounts()}
               disabled={loadingAccounts}
@@ -188,6 +245,61 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
             </button>
           </div>
         </div>
+
+        {/* Bulk Deletion Success Banner */}
+        {bulkDeletionResult && (
+          <div className="my-6 p-5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-bold text-emerald-950">
+                  {t.bulkDeleteUsersSuccess}
+                </h4>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  {t.purgedUsersCount} <strong className="font-mono">{bulkDeletionResult.deletedCount}</strong>
+                </p>
+                {bulkDeletionResult.deletedAccountIds.length > 0 && (
+                  <p className="text-[11px] text-slate-600 font-mono mt-1 break-all">
+                    IDs: {bulkDeletionResult.deletedAccountIds.join(', ')}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleResetSuccess}
+                className="p-1 text-slate-400 hover:text-slate-600"
+                title="Dismiss"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {bulkDeletionResult.cascadedTotals && (
+              <div className="bg-white/80 border border-emerald-200 rounded-xl p-3.5">
+                <h5 className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                  {t.cascadedRecordsDeleted}
+                </h5>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  {Object.entries(bulkDeletionResult.cascadedTotals).map(([table, count]) => (
+                    <div key={table} className="p-2 bg-emerald-50/50 rounded-lg border border-emerald-100 font-mono">
+                      <span className="text-slate-500 block text-[10px]">{table}</span>
+                      <strong className="text-emerald-900">{count} purged</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleResetSuccess}
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{t.btnResetDeletionForm}</span>
+            </button>
+          </div>
+        )}
 
         {/* Deletion Success Banner */}
         {deletionResult && (
@@ -512,6 +624,104 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Section 4: Bulk Deletion Confirmation Modal Dialog */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5" />
+                <h4>{t.deleteAllModalTitle}</h4>
+              </div>
+              <button
+                onClick={() => setShowBulkModal(false)}
+                disabled={bulkDeleting}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scope Summary */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Eligible Accounts to Purge:</span>
+                <span className="font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  {eligibleOrdinaryAccounts.length} Ordinary User(s)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/60">
+                <span className="text-slate-500">Protected Account:</span>
+                <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Santosh Koli (9356755100) — Preserved
+                </span>
+              </div>
+            </div>
+
+            {/* Danger Warning */}
+            <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-950 leading-relaxed font-medium">
+              {t.deleteAllWarning}
+            </div>
+
+            {/* Error Message */}
+            {bulkDeleteError && (
+              <div className="p-3 bg-rose-100 border border-rose-300 rounded-xl text-xs text-rose-800 font-medium">
+                {bulkDeleteError}
+              </div>
+            )}
+
+            {/* Confirmation Form */}
+            <form onSubmit={handleBulkDeleteSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  {t.confirmPhraseBulkUsersLabel}
+                </label>
+                <input
+                  type="text"
+                  value={bulkPhrase}
+                  onChange={(e) => setBulkPhrase(e.target.value)}
+                  placeholder="DELETE ALL ORDINARY USERS"
+                  autoFocus
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold tracking-wider focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkModal(false)}
+                  disabled={bulkDeleting}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  {t.btnCancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    bulkDeleting ||
+                    bulkPhrase.trim() !== 'DELETE ALL ORDINARY USERS'
+                  }
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {bulkDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{t.deletingAccount}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>{t.btnConfirmBulkDeleteUsers}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
