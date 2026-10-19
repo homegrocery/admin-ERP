@@ -10,6 +10,7 @@ import type {
 } from '../types/admin';
 
 export const ADMIN_ERP_CANONICAL_URL = 'https://admin-erp-7ze5.onrender.com';
+export const PRODUCTION_API_URL = 'https://home-grocery-api.onrender.com';
 
 const TOKEN_KEY = 'homegrocery_admin_token';
 const ADMIN_KEY = 'homegrocery_admin_user';
@@ -18,7 +19,8 @@ const ADMIN_KEY = 'homegrocery_admin_user';
  * Resolves the backend API base URL:
  * 1. Checks VITE_API_BASE_URL environment variable (configured in Render for production)
  * 2. In local development on localhost/127.0.0.1, returns empty string (leveraging Vite dev proxy)
- * 3. In production without VITE_API_BASE_URL, returns empty string and warns
+ * 3. In production, falls back to canonical PRODUCTION_API_URL (https://home-grocery-api.onrender.com)
+ * 4. Normalizes any trailing slashes or duplicate /api suffixes
  */
 export function getApiBaseUrl(): string {
   const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
@@ -29,7 +31,7 @@ export function getApiBaseUrl(): string {
     ''
   ).trim();
   if (envBase) {
-    return envBase.replace(/\/+$/, '');
+    return envBase.replace(/\/+$/, '').replace(/\/api$/, '');
   }
 
   if (typeof window !== 'undefined') {
@@ -39,7 +41,7 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  return '';
+  return PRODUCTION_API_URL;
 }
 
 /**
@@ -95,10 +97,14 @@ export const adminApi = {
   },
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    let path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    if (!path.startsWith('/api') && !path.startsWith('http')) {
+      path = `/api${path}`;
+    }
     const fullUrl = endpoint.startsWith('http')
       ? endpoint
-      : `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+      : `${baseUrl}${path}`;
 
     const token = this.getToken();
     const headers: Record<string, string> = {

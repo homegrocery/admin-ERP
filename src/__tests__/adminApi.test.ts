@@ -57,7 +57,7 @@ describe('Admin ERP API Client', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
     const callArgs = mockFetch.mock.calls[0];
-    expect(callArgs[0]).toBe('/api/admin/test');
+    expect(callArgs[0]).toBe('https://home-grocery-api.onrender.com/api/admin/test');
     expect(callArgs[1].headers['Authorization']).toBe('Bearer auth-bearer-token-xyz');
   });
 
@@ -103,7 +103,7 @@ describe('Admin ERP API Client', () => {
 
     expect(res.admin).toEqual(updatedUser);
     expect(adminApi.getAdminUser()).toEqual(updatedUser);
-    expect(mockFetch).toHaveBeenCalledWith('/api/admin/profile', expect.objectContaining({
+    expect(mockFetch).toHaveBeenCalledWith('https://home-grocery-api.onrender.com/api/admin/profile', expect.objectContaining({
       method: 'PATCH',
       body: JSON.stringify({ fullName: 'Santosh Koli (Owner)', preferredLanguage: 'mr' })
     }));
@@ -139,18 +139,18 @@ describe('Admin ERP API Client', () => {
     expect(res.success).toBe(true);
     expect(res.token).toBe('new-fresh-token-xyz');
     expect(adminApi.getToken()).toBe('new-fresh-token-xyz');
-    expect(mockFetch).toHaveBeenCalledWith('/api/admin/auth/change-pin', expect.objectContaining({
+    expect(mockFetch).toHaveBeenCalledWith('https://home-grocery-api.onrender.com/api/admin/auth/change-pin', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ currentPin: '654321', newPin: '987654', confirmPin: '987654' })
     }));
   });
 
-  it('should export the canonical Render Admin ERP URL', () => {
+  it('should export the canonical Render Admin ERP URL and production API URL', () => {
     expect(adminApi.getCanonicalUrl()).toBe('https://admin-erp-7ze5.onrender.com');
+    expect(adminApi.getBaseUrl()).toBe('https://home-grocery-api.onrender.com');
   });
 
   it('should prepend configured API base URL when VITE_API_BASE_URL is provided', async () => {
-    // Test direct fullUrl resolution when endpoint is absolute or relative
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, data: { status: 'healthy' } })
@@ -160,5 +160,18 @@ describe('Admin ERP API Client', () => {
     // Test with explicit full URL
     await adminApi.request('https://api.custom-backend.com/api/admin/health');
     expect(mockFetch).toHaveBeenCalledWith('https://api.custom-backend.com/api/admin/health', expect.any(Object));
+  });
+
+  it('should prevent duplicate /api in request URL construction', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { status: 'healthy' } })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await adminApi.request('/api/admin/health');
+    const calledUrl = mockFetch.mock.calls[mockFetch.mock.calls.length - 1][0];
+    expect(calledUrl).toBe('https://home-grocery-api.onrender.com/api/admin/health');
+    expect(calledUrl).not.toContain('/api/api');
   });
 });
