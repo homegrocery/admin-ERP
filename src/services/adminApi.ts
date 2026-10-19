@@ -9,7 +9,7 @@ import type {
   RecoveryRequestStatus
 } from '../types/admin';
 
-export const ADMIN_ERP_CANONICAL_URL = 'https://admin-erp-7ze5.onrender.com';
+export const ADMIN_ERP_CANONICAL_URL = 'https://homegrocery.github.io/admin-ERP/';
 export const PRODUCTION_API_URL = 'https://home-grocery-api.onrender.com';
 
 const TOKEN_KEY = 'homegrocery_admin_token';
@@ -132,9 +132,9 @@ export const adminApi = {
       return json?.data ?? json;
     } catch (err: any) {
       // Helpful diagnostic if running in production without configured backend
-      if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com') && !baseUrl) {
+      if (typeof window !== 'undefined' && !baseUrl && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         throw new Error(
-          'BACKEND_API_NOT_CONFIGURED: The backend API URL is not configured. Please set the VITE_API_BASE_URL environment variable in the Render Dashboard for admin-erp-7ze5.'
+          'BACKEND_API_NOT_CONFIGURED: The backend API URL is not configured.'
         );
       }
       throw err;

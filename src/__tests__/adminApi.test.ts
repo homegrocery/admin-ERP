@@ -145,8 +145,8 @@ describe('Admin ERP API Client', () => {
     }));
   });
 
-  it('should export the canonical Render Admin ERP URL and production API URL', () => {
-    expect(adminApi.getCanonicalUrl()).toBe('https://admin-erp-7ze5.onrender.com');
+  it('should export the canonical Admin ERP URL and production API URL', () => {
+    expect(adminApi.getCanonicalUrl()).toBe('https://homegrocery.github.io/admin-ERP/');
     expect(adminApi.getBaseUrl()).toBe('https://home-grocery-api.onrender.com');
   });
 
