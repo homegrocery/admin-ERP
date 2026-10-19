@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#1E3A8A" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="112" fill="url(#blueGrad)"/>
+
+  <!-- Grocery Bag / Clipboard Base -->
+  <g filter="url(#shadow)" transform="translate(96, 80)">
+    <!-- Clipboard Board -->
+    <rect x="0" y="48" width="320" height="340" rx="32" fill="#FFFFFF"/>
+    
+    <!-- Clipboard Top Clip -->
+    <rect x="96" y="24" width="128" height="48" rx="16" fill="#EFF6FF" stroke="#2563EB" stroke-width="8"/>
+    <circle cx="160" cy="48" r="10" fill="#2563EB"/>
+
+    <!-- Grocery Checklist Items -->
+    <!-- Item 1: Checked -->
+    <rect x="40" y="112" width="32" height="32" rx="8" fill="#DBEAFE"/>
+    <path d="M46 128 L54 136 L66 122" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="92" y="120" width="140" height="16" rx="8" fill="#1E3A8A"/>
+    <rect x="244" y="120" width="36" height="16" rx="8" fill="#93C5FD"/>
+
+    <!-- Item 2: Checked -->
+    <rect x="40" y="172" width="32" height="32" rx="8" fill="#DBEAFE"/>
+    <path d="M46 188 L54 196 L66 182" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="92" y="180" width="120" height="16" rx="8" fill="#1E3A8A"/>
+    <rect x="224" y="180" width="56" height="16" rx="8" fill="#93C5FD"/>
+
+    <!-- Item 3: Pending with Grocery Apple/Grain Icon -->
+    <rect x="40" y="232" width="32" height="32" rx="8" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="3"/>
+    <rect x="92" y="240" width="150" height="16" rx="8" fill="#64748B"/>
+    <rect x="254" y="240" width="26" height="16" rx="8" fill="#CBD5E1"/>
+
+    <!-- Item 4: Pending -->
+    <rect x="40" y="292" width="32" height="32" rx="8" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="3"/>
+    <rect x="92" y="300" width="100" height="16" rx="8" fill="#64748B"/>
+    <rect x="204" y="300" width="40" height="16" rx="8" fill="#CBD5E1"/>
+
+    <!-- Bottom Accent Ribbon / Badge -->
+    <rect x="36" y="348" width="248" height="12" rx="6" fill="#3B82F6"/>
+  </g>
+</svg>
