@@ -9,10 +9,58 @@ import type {
   RecoveryRequestStatus
 } from '../types/admin';
 
+export const ADMIN_ERP_CANONICAL_URL = 'https://admin-erp-7ze5.onrender.com';
+
 const TOKEN_KEY = 'homegrocery_admin_token';
 const ADMIN_KEY = 'homegrocery_admin_user';
 
+/**
+ * Resolves the backend API base URL:
+ * 1. Checks VITE_API_BASE_URL environment variable (configured in Render for production)
+ * 2. In local development on localhost/127.0.0.1, returns empty string (leveraging Vite dev proxy)
+ * 3. In production without VITE_API_BASE_URL, returns empty string and warns
+ */
+export function getApiBaseUrl(): string {
+  const envBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL || '').trim();
+  if (envBase) {
+    return envBase.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+      return ''; // Vite proxy to local backend
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Checks if the backend API has been configured for the current environment.
+ */
+export function isBackendConfigured(): boolean {
+  if (typeof window === 'undefined') return true;
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+    return true;
+  }
+  return Boolean(getApiBaseUrl());
+}
+
 export const adminApi = {
+  getCanonicalUrl(): string {
+    return ADMIN_ERP_CANONICAL_URL;
+  },
+
+  getBaseUrl(): string {
+    return getApiBaseUrl();
+  },
+
+  isBackendConfigured(): boolean {
+    return isBackendConfigured();
+  },
+
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
   },
@@ -41,6 +89,11 @@ export const adminApi = {
   },
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const baseUrl = getApiBaseUrl();
+    const fullUrl = endpoint.startsWith('http')
+      ? endpoint
+      : `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -51,19 +104,29 @@ export const adminApi = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(endpoint, {
-      ...options,
-      headers
-    });
+    try {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers
+      });
 
-    const json = await response.json().catch(() => null);
+      const json = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      const errorMsg = json?.error || json?.message || `HTTP ${response.status}: ${response.statusText}`;
-      throw new Error(errorMsg);
+      if (!response.ok) {
+        const errorMsg = json?.error || json?.message || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMsg);
+      }
+
+      return json?.data ?? json;
+    } catch (err: any) {
+      // Helpful diagnostic if running in production without configured backend
+      if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com') && !baseUrl) {
+        throw new Error(
+          'BACKEND_API_NOT_CONFIGURED: The backend API URL is not configured. Please set the VITE_API_BASE_URL environment variable in the Render Dashboard for admin-erp-7ze5.'
+        );
+      }
+      throw err;
     }
-
-    return json?.data ?? json;
   },
 
   async login(mobileNumber: string, pin: string): Promise<{ token: string; admin: AdminUser }> {

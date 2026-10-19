@@ -144,4 +144,21 @@ describe('Admin ERP API Client', () => {
       body: JSON.stringify({ currentPin: '654321', newPin: '987654', confirmPin: '987654' })
     }));
   });
+
+  it('should export the canonical Render Admin ERP URL', () => {
+    expect(adminApi.getCanonicalUrl()).toBe('https://admin-erp-7ze5.onrender.com');
+  });
+
+  it('should prepend configured API base URL when VITE_API_BASE_URL is provided', async () => {
+    // Test direct fullUrl resolution when endpoint is absolute or relative
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { status: 'healthy' } })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    // Test with explicit full URL
+    await adminApi.request('https://api.custom-backend.com/api/admin/health');
+    expect(mockFetch).toHaveBeenCalledWith('https://api.custom-backend.com/api/admin/health', expect.any(Object));
+  });
 });

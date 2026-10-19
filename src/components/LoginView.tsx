@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Phone, AlertCircle, Loader2, Globe } from 'lucide-react';
+import { Shield, Lock, Phone, AlertCircle, AlertTriangle, Loader2, Globe } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
 import type { AdminUser } from '../types/admin';
@@ -79,6 +79,22 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
               <div className="text-xs text-rose-200 leading-relaxed font-medium">
                 {error}
+              </div>
+            </div>
+          )}
+
+          {!adminApi.isBackendConfigured() && (
+            <div className="mb-5 p-3.5 rounded-xl bg-amber-950/60 border border-amber-800/60 flex items-start gap-3 text-left">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-200 leading-relaxed">
+                <p className="font-bold text-amber-300">
+                  {lang === 'mr' ? 'बॅकएंड API URL कॉन्फिगर केलेले नाही' : 'Backend API URL Not Configured'}
+                </p>
+                <p className="mt-1 text-[11px] text-amber-300/80">
+                  {lang === 'mr'
+                    ? 'कृपया Render डॅशबोर्डमध्ये VITE_API_BASE_URL एन्व्हायर्नमेंट व्हेरिएबल सेट करा.'
+                    : 'Please configure the VITE_API_BASE_URL environment variable in your Render service settings.'}
+                </p>
               </div>
             </div>
           )}

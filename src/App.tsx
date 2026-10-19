@@ -116,7 +116,7 @@ export function App() {
           <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
             <span>Home Grocery ERP v1.0.0</span>
             <span>•</span>
-            <span>Port: 3002</span>
+            <span>{import.meta.env.PROD ? 'Render Production' : 'Port: 3002'}</span>
             <span>•</span>
             <span className="text-emerald-600 font-semibold">{t.sessionActive}</span>
           </div>

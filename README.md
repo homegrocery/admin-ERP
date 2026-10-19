@@ -2,14 +2,32 @@
 
 Private, owner-authorized Enterprise Resource Planning (ERP) and account management web console for Home Grocery (घरगुती किराणा यादी).
 
+---
+
+## Production Deployment & Canonical URL
+
+- **Canonical Production URL:** `https://admin-erp-7ze5.onrender.com`
+- **Hosted on:** Render Static Site
+- **Backend API Configuration:** The Admin ERP frontend communicates with the backend via the `VITE_API_BASE_URL` environment variable.
+  - In Render Dashboard: Set `VITE_API_BASE_URL` to your verified backend URL (e.g. `https://<backend-service>.onrender.com`).
+  - In local development: Leave empty to leverage the local Vite proxy (`http://127.0.0.1:3001`).
+
+---
+
 ## Security & Access Control
 
 - **Authorized Owner Account:** Mobile `9356755100` (Verified on authoritative backend).
-- **Server-Side Enforcement:** Every API request requires a cryptographically validated bearer token where `role === 'admin'`. Ordinary users are strictly forbidden (`403 Forbidden`).
+- **Server-Side Enforcement:** Every `/api/admin/*` API request requires a cryptographically validated bearer token where `role === 'admin'`. Ordinary users are strictly forbidden (`403 Forbidden`).
+- **Access Restriction Gateways:**
+  - The Admin ERP is never linked from the public website or Android app.
+  - `robots.txt` and `<meta name="robots" content="noindex, nofollow, noarchive">` prevent search engine indexing.
+  - For total private isolation, Cloudflare Access (Zero Trust) or Render IP Access Control can be placed in front of `https://admin-erp-7ze5.onrender.com` to require email OTP or corporate SSO before reaching the login screen.
 - **Privacy Protections:**
   - PINs, PIN hashes, salts, and personal grocery items are never returned in admin API responses.
   - Plaintext credentials and tokens are strictly excluded from audit logs and client bundles.
 - **Strict Network Isolation:** This Admin ERP is completely isolated from the public consumer website and Android application.
+
+---
 
 ## Key Modules
 
@@ -20,6 +38,8 @@ Private, owner-authorized Enterprise Resource Planning (ERP) and account managem
 5. **Profile Settings:** Owner profile editing and secure Admin PIN change.
 6. **Security & Audit Logs:** Immutable record of all administrative actions with timestamp and IP address.
 
+---
+
 ## Development & Build
 
 ```bash
@@ -29,7 +49,7 @@ npm install
 # Start local Admin ERP server on port 3002
 npm run dev
 
-# Run automated test suite (11 tests)
+# Run automated test suite
 npm test
 
 # Build for production
