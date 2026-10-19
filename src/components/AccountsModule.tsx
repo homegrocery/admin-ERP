@@ -62,11 +62,13 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
     fetchAccounts();
   };
 
-  const formatDate = (isoStr: string | null) => {
-    if (!isoStr) return t.neverLoggedIn;
+  const formatDate = (isoStr: string | null | undefined, fallback?: string) => {
+    if (!isoStr) return fallback !== undefined ? fallback : t.neverLoggedIn;
     try {
       const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return fallback !== undefined ? fallback : t.neverLoggedIn;
       return d.toLocaleDateString(lang === 'mr' ? 'mr-IN' : 'en-IN', {
+        timeZone: 'Asia/Kolkata',
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -74,7 +76,7 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
         minute: '2-digit'
       });
     } catch {
-      return isoStr;
+      return fallback !== undefined ? fallback : t.neverLoggedIn;
     }
   };
 
@@ -236,7 +238,7 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
                         {acc.pin_length || 4} {t.pinDigits}
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
-                        {formatDate(acc.created_at)}
+                        {formatDate(acc.created_at, '-')}
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
                         {formatDate(acc.last_login_at)}
