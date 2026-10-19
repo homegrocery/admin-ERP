@@ -15,7 +15,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
-import { adminApi } from '../services/adminApi';
+import { adminApi, normalizePhoneNumber } from '../services/adminApi';
 import type { AccountMetadata, DeletionResult, BulkDeletionResult } from '../types/admin';
 
 interface DeleteAccountModuleProps {
@@ -131,11 +131,12 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
   const isOwner = (acc: AccountMetadata) =>
     acc.role === 'admin' || acc.mobile_number === '9356755100';
 
-  const isDoubleConfirmed =
+  const isDoubleConfirmed = Boolean(
     targetAccount &&
     !isOwner(targetAccount) &&
-    confirmMobile.trim() === targetAccount.mobile_number &&
-    confirmPhrase.trim().toUpperCase() === 'DELETE';
+    normalizePhoneNumber(confirmMobile) === targetAccount.mobile_number &&
+    confirmPhrase.trim().toUpperCase() === 'DELETE'
+  );
 
   const handleDelete = async () => {
     if (!targetAccount || !isDoubleConfirmed) return;
@@ -145,13 +146,25 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
     try {
       const res = await adminApi.deleteAccount(
         targetAccount.id,
-        confirmMobile.trim(),
-        confirmPhrase.trim()
+        normalizePhoneNumber(confirmMobile),
+        confirmPhrase.trim().toUpperCase()
       );
       setDeletionResult(res);
+      const deletedId = targetAccount.id;
+      const deletedMobile = targetAccount.mobile_number;
       setTargetAccount(null);
-      // Immediately refresh the account list so deleted user disappears from table
-      await fetchAccounts();
+
+      // Immediately remove the deleted account from state so table refreshes instantly
+      setAccounts(prev => prev.filter(a => a.id !== deletedId));
+      setTotalAccounts(prev => Math.max(0, prev - 1));
+
+      // If user had searched for the deleted account, clear the search so the table is not stuck in empty state
+      if (searchQuery && (searchQuery.trim() === deletedMobile || searchQuery.trim() === deletedId)) {
+        setSearchQuery('');
+        await fetchAccounts('');
+      } else {
+        await fetchAccounts();
+      }
     } catch (err: any) {
       setDeleteError(err.message || 'Failed to delete account');
     } finally {
@@ -171,17 +184,18 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
     fetchAccounts();
   };
 
-  const formatDate = (isoStr: string | null) => {
+  const formatDate = (isoStr: string | null | undefined) => {
     if (!isoStr) return '-';
     try {
       const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '-';
       return d.toLocaleDateString(lang === 'mr' ? 'mr-IN' : 'en-IN', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
     } catch {
-      return isoStr;
+      return '-';
     }
   };
 
@@ -315,9 +329,11 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                 <p className="text-xs text-emerald-800 mt-0.5">
                   {t.deletedAccountId}: <strong className="font-mono select-all">{deletionResult.deletedAccountId}</strong>
                 </p>
-                <p className="text-xs text-slate-600 font-mono mt-0.5">
-                  {t.confirmationId}: {deletionResult.confirmationId}
-                </p>
+                {deletionResult.confirmationId && (
+                  <p className="text-xs text-slate-600 font-mono mt-0.5">
+                    {t.confirmationId}: {deletionResult.confirmationId}
+                  </p>
+                )}
               </div>
               <button
                 onClick={handleResetSuccess}
@@ -394,12 +410,27 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{fetchError}</span>
               </div>
-              <button
-                onClick={() => fetchAccounts()}
-                className="px-3 py-1 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition"
-              >
-                {t.retryBtn}
-              </button>
+              <div className="flex items-center gap-2">
+                {(fetchError.toLowerCase().includes('401') || fetchError.toLowerCase().includes('unauthorized') || fetchError.toLowerCase().includes('session')) && (
+                  <button
+                    onClick={() => {
+                      adminApi.clearSession();
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('admin:session-expired'));
+                      }
+                    }}
+                    className="px-3 py-1 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition"
+                  >
+                    {lang === 'mr' ? 'पुन्हा लॉगिन करा' : 'Log In Again'}
+                  </button>
+                )}
+                <button
+                  onClick={() => fetchAccounts()}
+                  className="px-3 py-1 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition"
+                >
+                  {t.retryBtn}
+                </button>
+              </div>
             </div>
           )}
 
@@ -420,8 +451,20 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                 <span className="text-xs">{t.loading}</span>
               </div>
             ) : accounts.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                {t.noEligibleAccounts}
+              <div className="py-12 text-center text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                <p>{searchQuery ? (lang === 'mr' ? `या शोधासाठी कोणतेही खाते आढळले नाही: "${searchQuery}"` : `No accounts match: "${searchQuery}"`) : t.noEligibleAccounts}</p>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      fetchAccounts('');
+                    }}
+                    className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-semibold transition"
+                  >
+                    {lang === 'mr' ? 'सर्व खाती दाखवा' : 'Show All Accounts'}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -450,7 +493,7 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                             {acc.mobile_number}
                           </td>
                           <td className="py-3 px-4 font-medium text-slate-700">
-                            {acc.username || (acc as any).full_name || '-'}
+                            {acc.full_name || acc.username || '-'}
                           </td>
                           <td className="py-3 px-4 font-mono text-slate-500">
                             <span title={acc.id}>
@@ -538,7 +581,7 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">{t.ownerNameLabel}</span>
-                  <strong className="text-slate-800">{targetAccount.username || (targetAccount as any).full_name || '-'}</strong>
+                  <strong className="text-slate-800">{targetAccount.full_name || targetAccount.username || '-'}</strong>
                 </div>
                 <div className="col-span-2">
                   <span className="text-slate-500 block text-[10px]">{t.colUserId}</span>
@@ -569,7 +612,7 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                   type="tel"
                   inputMode="numeric"
                   value={confirmMobile}
-                  onChange={(e) => setConfirmMobile(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setConfirmMobile(normalizePhoneNumber(e.target.value))}
                   placeholder={targetAccount.mobile_number}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />

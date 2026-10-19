@@ -49,6 +49,20 @@ export function App() {
     };
 
     verifyAuth();
+
+    const handleSessionExpired = () => {
+      setAdminUser(null);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('admin:session-expired', handleSessionExpired);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('admin:session-expired', handleSessionExpired);
+      }
+    };
   }, []);
 
   const handleLogout = async () => {

@@ -13,7 +13,8 @@ export interface AdminUser {
 export interface AccountMetadata {
   id: string;
   mobile_number: string;
-  username: string;
+  username?: string;
+  full_name?: string;
   role: string;
   pin_length: number;
   created_at: string;

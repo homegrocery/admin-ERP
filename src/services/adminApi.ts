@@ -58,6 +58,15 @@ export function isBackendConfigured(): boolean {
   return Boolean(getApiBaseUrl());
 }
 
+export function normalizePhoneNumber(input: string): string {
+  if (!input) return '';
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  if (digits.length > 10) return digits.slice(-10);
+  return digits;
+}
+
 export const adminApi = {
   getCanonicalUrl(): string {
     return ADMIN_ERP_CANONICAL_URL;
@@ -118,21 +127,41 @@ export const adminApi = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const controller = new AbortController();
+    const timeoutMs = 25000;
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
     try {
       const response = await fetch(fullUrl, {
         ...options,
-        headers
+        headers,
+        signal: options.signal || controller.signal
       });
+      clearTimeout(timeoutId);
 
       const json = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          this.clearSession();
+          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('admin:session-expired'));
+          }
+        }
         const errorMsg = json?.error || json?.message || `HTTP ${response.status}: ${response.statusText}`;
-        throw new Error(errorMsg);
+        const err: any = new Error(errorMsg);
+        err.status = response.status;
+        throw err;
       }
 
       return json?.data ?? json;
     } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('REQUEST_TIMEOUT: Request timed out. The backend server may be waking up, please retry.');
+      }
       // Helpful diagnostic if running in production without configured backend
       if (typeof window !== 'undefined' && !baseUrl && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         throw new Error(
