@@ -6,6 +6,7 @@ import { RecoveryRequestsModule } from './components/RecoveryRequestsModule';
 import { DeleteAccountModule } from './components/DeleteAccountModule';
 import { AuditLogsModule } from './components/AuditLogsModule';
 import { ProfileModule } from './components/ProfileModule';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { adminTranslations, type Language } from './i18n/adminTranslations';
 import { adminApi } from './services/adminApi';
 import type { AdminUser } from './types/admin';
@@ -105,22 +106,24 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {currentTab === 'accounts' && <AccountsModule lang={lang} />}
-        {currentTab === 'recovery' && <RecoveryRequestsModule lang={lang} />}
-        {currentTab === 'delete' && <DeleteAccountModule lang={lang} />}
-        {currentTab === 'audit' && <AuditLogsModule lang={lang} />}
-        {currentTab === 'profile' && adminUser && (
-          <ProfileModule
-            lang={lang}
-            adminUser={adminUser}
-            onProfileUpdate={(updated) => {
-              setAdminUser(updated);
-              adminApi.setAdminUser(updated);
-            }}
-            onLogout={handleLogout}
-            onLanguageChange={handleLanguageChange}
-          />
-        )}
+        <ErrorBoundary>
+          {currentTab === 'accounts' && <AccountsModule lang={lang} />}
+          {currentTab === 'recovery' && <RecoveryRequestsModule lang={lang} />}
+          {currentTab === 'delete' && <DeleteAccountModule lang={lang} />}
+          {currentTab === 'audit' && <AuditLogsModule lang={lang} />}
+          {currentTab === 'profile' && adminUser && (
+            <ProfileModule
+              lang={lang}
+              adminUser={adminUser}
+              onProfileUpdate={(updated) => {
+                setAdminUser(updated);
+                adminApi.setAdminUser(updated);
+              }}
+              onLogout={handleLogout}
+              onLanguageChange={handleLanguageChange}
+            />
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}

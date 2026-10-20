@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   AlertTriangle,
   UserX,
@@ -17,6 +17,11 @@ import {
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi, normalizePhoneNumber } from '../services/adminApi';
 import type { AccountMetadata, DeletionResult, BulkDeletionResult } from '../types/admin';
+
+export const isOwnerAccount = (acc?: AccountMetadata | null): boolean => {
+  if (!acc) return false;
+  return acc.role === 'admin' || acc.mobile_number === '9356755100';
+};
 
 interface DeleteAccountModuleProps {
   lang: Language;
@@ -51,7 +56,10 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
   const [bulkDeletionResult, setBulkDeletionResult] = useState<BulkDeletionResult | null>(null);
 
-  const eligibleOrdinaryAccounts = accounts.filter(a => !isOwner(a));
+  const eligibleOrdinaryAccounts = useMemo(
+    () => accounts.filter(a => !isOwnerAccount(a)),
+    [accounts]
+  );
 
   const handleBulkDeleteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,12 +136,9 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
     setDeleteError(null);
   };
 
-  const isOwner = (acc: AccountMetadata) =>
-    acc.role === 'admin' || acc.mobile_number === '9356755100';
-
   const isDoubleConfirmed = Boolean(
     targetAccount &&
-    !isOwner(targetAccount) &&
+    !isOwnerAccount(targetAccount) &&
     normalizePhoneNumber(confirmMobile) === targetAccount.mobile_number &&
     confirmPhrase.trim().toUpperCase() === 'DELETE'
   );
@@ -481,7 +486,7 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {accounts.map((acc) => {
-                      const ownerProtected = isOwner(acc);
+                      const ownerProtected = isOwnerAccount(acc);
                       return (
                         <tr
                           key={acc.id}

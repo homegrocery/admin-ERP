@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { adminApi, normalizePhoneNumber } from '../services/adminApi';
+import { isOwnerAccount } from '../components/DeleteAccountModule';
+import type { AccountMetadata } from '../types/admin';
 
 describe('Admin ERP — Delete Account Module & API Services', () => {
   beforeEach(() => {
@@ -41,6 +43,67 @@ describe('Admin ERP — Delete Account Module & API Services', () => {
 
     it('handles empty input gracefully', () => {
       expect(normalizePhoneNumber('')).toBe('');
+    });
+  });
+
+  describe('isOwnerAccount and eligibleOrdinaryAccounts filtering', () => {
+    const ownerAccount: AccountMetadata = {
+      id: 'acc-owner-1',
+      mobile_number: '9356755100',
+      role: 'admin',
+      pin_length: 6,
+      is_locked: false,
+      failed_login_attempts: 0,
+      has_active_recovery_code: false,
+      has_pending_recovery_request: false,
+      created_at: '2026-10-17T10:00:00Z',
+      last_login_at: '2026-10-19T10:00:00Z'
+    };
+
+    const regularAccount1: AccountMetadata = {
+      id: 'acc-user-1',
+      mobile_number: '9820027118',
+      role: 'user',
+      pin_length: 4,
+      is_locked: false,
+      failed_login_attempts: 0,
+      has_active_recovery_code: true,
+      has_pending_recovery_request: false,
+      created_at: '2026-10-18T10:00:00Z',
+      last_login_at: null
+    };
+
+    const regularAccount2: AccountMetadata = {
+      id: 'acc-user-2',
+      mobile_number: '9876543210',
+      role: 'user',
+      pin_length: 4,
+      is_locked: true,
+      failed_login_attempts: 5,
+      has_active_recovery_code: false,
+      has_pending_recovery_request: true,
+      created_at: '2026-10-19T10:00:00Z',
+      last_login_at: '2026-10-19T11:00:00Z'
+    };
+
+    it('identifies owner account by role and mobile number', () => {
+      expect(isOwnerAccount(ownerAccount)).toBe(true);
+      expect(isOwnerAccount({ ...regularAccount1, role: 'admin' })).toBe(true);
+      expect(isOwnerAccount({ ...regularAccount1, mobile_number: '9356755100' })).toBe(true);
+    });
+
+    it('returns false for ordinary users and null/undefined', () => {
+      expect(isOwnerAccount(regularAccount1)).toBe(false);
+      expect(isOwnerAccount(regularAccount2)).toBe(false);
+      expect(isOwnerAccount(null)).toBe(false);
+      expect(isOwnerAccount(undefined)).toBe(false);
+    });
+
+    it('correctly filters ordinary accounts without throwing TDZ ReferenceError', () => {
+      const allAccounts = [ownerAccount, regularAccount1, regularAccount2];
+      const eligible = allAccounts.filter(a => !isOwnerAccount(a));
+      expect(eligible).toHaveLength(2);
+      expect(eligible.map(a => a.id)).toEqual(['acc-user-1', 'acc-user-2']);
     });
   });
 
