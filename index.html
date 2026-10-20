@@ -5,8 +5,110 @@
     <link rel="icon" type="image/svg+xml" href="./grocery-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Home Grocery — Owner Admin ERP | घरगुती किराणा यादी</title>
-    <link rel="canonical" href="https://admin-erp-7ze5.onrender.com" />
+    <link rel="canonical" href="https://homegrocery.github.io/admin-ERP/" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
+
+    <!-- Console hygiene & third-party extension noise shield -->
+    <script>
+      (function() {
+        if (typeof window === 'undefined') return;
+
+        // 1. Silent interceptor for third-party / extension analytics requests blocked by client adblockers
+        var origFetch = window.fetch;
+        if (origFetch) {
+          window.fetch = function(resource, init) {
+            try {
+              var url = '';
+              if (typeof resource === 'string') {
+                url = resource;
+              } else if (resource && resource.url) {
+                url = resource.url;
+              }
+              if (url && (url.indexOf('google-analytics.com') !== -1 || url.indexOf('/collect') !== -1 || url.indexOf('logger.buyhatke.com') !== -1)) {
+                return Promise.resolve(new Response(JSON.stringify({ status: 'ok' }), {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' }
+                }));
+              }
+            } catch (e) {}
+            return origFetch.apply(this, arguments);
+          };
+        }
+
+        // 2. Beacon interceptor for extension analytics
+        if (navigator && navigator.sendBeacon) {
+          var origBeacon = navigator.sendBeacon.bind(navigator);
+          navigator.sendBeacon = function(url, data) {
+            if (typeof url === 'string' && (url.indexOf('google-analytics.com') !== -1 || url.indexOf('/collect') !== -1)) {
+              return true;
+            }
+            return origBeacon(url, data);
+          };
+        }
+
+        // 3. XMLHttpRequest interceptor for extension analytics
+        var origOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url) {
+          this._url = url;
+          return origOpen.apply(this, arguments);
+        };
+        var origSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.send = function(body) {
+          if (this._url && typeof this._url === 'string' && (this._url.indexOf('google-analytics.com') !== -1 || this._url.indexOf('/collect') !== -1)) {
+            Object.defineProperty(this, 'readyState', { value: 4, writable: false });
+            Object.defineProperty(this, 'status', { value: 200, writable: false });
+            Object.defineProperty(this, 'responseText', { value: '{"status":"ok"}', writable: false });
+            if (typeof this.onreadystatechange === 'function') this.onreadystatechange();
+            if (typeof this.onload === 'function') this.onload();
+            return;
+          }
+          return origSend.apply(this, arguments);
+        };
+
+        // 4. Console filter for Permissions-Policy header warnings & client adblock errors
+        var origWarn = console.warn.bind(console);
+        console.warn = function() {
+          var msg = Array.prototype.slice.call(arguments).join(' ');
+          if (
+            msg.indexOf('Permissions-Policy') !== -1 ||
+            msg.indexOf('attribution-reporting') !== -1 ||
+            msg.indexOf('private-aggregation') !== -1 ||
+            msg.indexOf('join-ad-interest-group') !== -1 ||
+            msg.indexOf('run-ad-auction') !== -1 ||
+            msg.indexOf('browsing-topics') !== -1
+          ) {
+            return;
+          }
+          origWarn.apply(console, arguments);
+        };
+
+        var origError = console.error.bind(console);
+        console.error = function() {
+          var msg = Array.prototype.slice.call(arguments).join(' ');
+          if (
+            msg.indexOf('google-analytics') !== -1 ||
+            msg.indexOf('ERR_BLOCKED_BY_CLIENT') !== -1 ||
+            msg.indexOf('Permissions-Policy') !== -1
+          ) {
+            return;
+          }
+          origError.apply(console, arguments);
+        };
+
+        // 5. Unhandled error filter for third-party scripts
+        window.addEventListener('error', function(event) {
+          if (
+            event &&
+            ((event.filename && (event.filename.indexOf('vendor.min.js') !== -1 || event.filename.indexOf('base.min.js') !== -1)) ||
+            (event.message && (event.message.indexOf('google-analytics') !== -1 || event.message.indexOf('ERR_BLOCKED_BY_CLIENT') !== -1)))
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
+      })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
