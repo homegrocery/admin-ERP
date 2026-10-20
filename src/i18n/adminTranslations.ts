@@ -233,7 +233,44 @@ export const adminTranslations = {
     bulkArchiveSuccess: 'All active audit entries have been archived.',
     activeLogsTab: 'Active Logs',
     archivedLogsTab: 'Archived Logs',
-    dateUnavailable: 'Date unavailable'
+    dateUnavailable: 'Date unavailable',
+
+    // Recovery Single & Bulk Deletion
+    btnDeleteRecoveryRequest: 'Delete Permanently',
+    deleteRecoveryTooltip: 'Permanently delete this recovery request',
+    deleteRecoveryModalTitle: 'Permanently Delete Recovery Request',
+    deleteRecoveryWarning: 'WARNING: This will permanently remove this recovery request and revoke any associated temporary recovery code or authorization token. The user account, PIN, and unrelated data will NOT be deleted. This cannot be undone.',
+    targetMobileLabel: 'Requester Mobile',
+    requestIdLabel: 'Request ID',
+    requestStatusLabel: 'Request Status',
+    btnConfirmDeleteRecovery: 'Permanently Delete Request',
+    deleteRecoverySuccess: 'Recovery request permanently deleted and temporary authorizations revoked.',
+    deletingRecovery: 'Permanently deleting recovery request...',
+    btnDeleteAllRecoveryRequests: 'Delete All Recovery Requests Permanently',
+    deleteAllRecoveryModalTitle: 'Confirm Bulk Permanent Deletion of Recovery Requests',
+    deleteAllRecoveryWarning: 'EXTREME WARNING: This will permanently delete ALL recovery requests ({count} total), regardless of their status (Approved, Pending, Rejected, Expired, Completed), and revoke all outstanding temporary recovery authorizations and codes. User accounts and security PINs will NOT be deleted.',
+    confirmPhraseBulkRecoveryLabel: 'Type "DELETE ALL RECOVERY REQUESTS" to confirm:',
+    bulkRecoveryPhraseRequired: 'DELETE ALL RECOVERY REQUESTS',
+    btnConfirmBulkDeleteRecovery: 'Permanently Erase All Recovery Requests',
+    bulkDeleteRecoverySuccess: 'Successfully deleted {count} recovery requests permanently.',
+    deletedRequestsCount: 'Deleted Requests:',
+
+    // Archived Log Single & Bulk Deletion
+    btnDeleteArchivedLog: 'Delete Permanently',
+    deleteArchivedLogTooltip: 'Permanently delete this archived log entry',
+    deleteArchivedLogModalTitle: 'Permanently Delete Archived Log',
+    deleteArchivedLogWarning: 'WARNING: This will permanently erase this archived audit log entry from the database. Active audit logs will not be affected. This cannot be undone.',
+    btnConfirmDeleteArchivedLog: 'Permanently Delete Log',
+    deleteArchivedLogSuccess: 'Archived audit log permanently deleted.',
+    deletingArchivedLog: 'Permanently deleting archived log...',
+    btnDeleteAllArchivedLogs: 'Delete All Archived Logs Permanently',
+    deleteAllArchivedLogsModalTitle: 'Confirm Permanent Deletion of All Archived Logs',
+    deleteAllArchivedLogsWarning: 'EXTREME WARNING: This will permanently delete ALL archived audit logs ({count} total) from the database. Only archived records will be removed; ACTIVE audit logs will NEVER be deleted. An audit record of this action will be saved in Active Logs.',
+    confirmPhraseBulkArchivedLogsLabel: 'Type "DELETE ALL ARCHIVED LOGS" to confirm:',
+    bulkArchivedLogsPhraseRequired: 'DELETE ALL ARCHIVED LOGS',
+    btnConfirmBulkDeleteArchivedLogs: 'Permanently Erase All Archived Logs',
+    bulkDeleteArchivedLogsSuccess: 'Successfully deleted {count} archived logs permanently.',
+    deletedArchivedLogsCount: 'Deleted Archived Logs:'
   },
   mr: {
     // App header & branding
@@ -467,6 +504,43 @@ export const adminTranslations = {
     bulkArchiveSuccess: 'सर्व सक्रिय ऑडिट नोंदी यशस्वीरित्या संग्रहित केल्या.',
     activeLogsTab: 'सक्रिय नोंदी',
     archivedLogsTab: 'संग्रहित नोंदी',
-    dateUnavailable: 'तारीख अनुपलब्ध'
+    dateUnavailable: 'तारीख अनुपलब्ध',
+
+    // Recovery Single & Bulk Deletion
+    btnDeleteRecoveryRequest: 'कायमस्वरूपी हटवा',
+    deleteRecoveryTooltip: 'ही रिकव्हरी विनंती कायमस्वरूपी हटवा',
+    deleteRecoveryModalTitle: 'रिकव्हरी विनंती कायमस्वरूपी हटवा',
+    deleteRecoveryWarning: 'चेतावणी: ही कृती ही रिकव्हरी विनंती कायमस्वरूपी नष्ट करेल आणि संबंधित तात्पुरता रिकव्हरी कोड किंवा ऑथोरायझेशन रद्द करेल. वापरकर्ता खाते आणि पिन सुरक्षित राहील. ही कृती पूर्ववत करता येणार नाही.',
+    targetMobileLabel: 'विनंतीदाराचा मोबाईल',
+    requestIdLabel: 'विनंती आयडी',
+    requestStatusLabel: 'विनंतीची स्थिती',
+    btnConfirmDeleteRecovery: 'विनंती कायमस्वरूपी हटवा',
+    deleteRecoverySuccess: 'रिकव्हरी विनंती यशस्वीरित्या हटवली आणि तात्पुरते अधिकार रद्द केले.',
+    deletingRecovery: 'रिकव्हरी विनंती हटवत आहे...',
+    btnDeleteAllRecoveryRequests: 'सर्व रिकव्हरी विनंत्या कायमस्वरूपी हटवा',
+    deleteAllRecoveryModalTitle: 'सर्व रिकव्हरी विनंत्या कायमस्वरूपी हटवण्याची खात्री करा',
+    deleteAllRecoveryWarning: 'अति-महत्त्वाची चेतावणी: हे सर्व रिकव्हरी विनंत्या (एकूण {count}) कायमस्वरूपी हटवेल आणि संबंधित सर्व तात्पुरते अधिकार व कोड रद्द करेल. वापरकर्ता खाती व पिन हटवले जाणार नाहीत.',
+    confirmPhraseBulkRecoveryLabel: 'पुष्टीसाठी "DELETE ALL RECOVERY REQUESTS" असे टाइप करा:',
+    bulkRecoveryPhraseRequired: 'DELETE ALL RECOVERY REQUESTS',
+    btnConfirmBulkDeleteRecovery: 'सर्व रिकव्हरी विनंत्या कायमच्या नष्ट करा',
+    bulkDeleteRecoverySuccess: '{count} रिकव्हरी विनंत्या यशस्वीरित्या कायमस्वरूपी हटवल्या.',
+    deletedRequestsCount: 'हटवलेल्या विनंत्या:',
+
+    // Archived Log Single & Bulk Deletion
+    btnDeleteArchivedLog: 'कायमस्वरूपी हटवा',
+    deleteArchivedLogTooltip: 'ही संग्रहित नोंद कायमस्वरूपी नष्ट करा',
+    deleteArchivedLogModalTitle: 'संग्रहित नोंद कायमस्वरूपी हटवा',
+    deleteArchivedLogWarning: 'चेतावणी: ही कृती ही संग्रहित नोंद डेटाबेसमधून कायमस्वरूपी नष्ट करेल. सक्रिय नोंदींवर कोणताही परिणाम होणार नाही. ही कृती पूर्ववत करता येणार नाही.',
+    btnConfirmDeleteArchivedLog: 'नोंद कायमस्वरूपी हटवा',
+    deleteArchivedLogSuccess: 'संग्रहित नोंद यशस्वीरित्या कायमस्वरूपी हटवली.',
+    deletingArchivedLog: 'संग्रहित नोंद हटवत आहे...',
+    btnDeleteAllArchivedLogs: 'सर्व संग्रहित नोंदी कायमस्वरूपी हटवा',
+    deleteAllArchivedLogsModalTitle: 'सर्व संग्रहित नोंदी कायमस्वरूपी हटवण्याची खात्री करा',
+    deleteAllArchivedLogsWarning: 'अति-महत्त्वाची चेतावणी: हे डेटाबेसमधील सर्व संग्रहित नोंदी (एकूण {count}) कायमस्वरूपी हटवेल. फक्त संग्रहित नोंदी हटवल्या जातील; सक्रिय नोंदी कधीही हटवल्या जाणार नाहीत. या कृतीची नोंद सक्रिय नोंदींमध्ये ठेवली जाईल.',
+    confirmPhraseBulkArchivedLogsLabel: 'पुष्टीसाठी "DELETE ALL ARCHIVED LOGS" असे टाइप करा:',
+    bulkArchivedLogsPhraseRequired: 'DELETE ALL ARCHIVED LOGS',
+    btnConfirmBulkDeleteArchivedLogs: 'सर्व संग्रहित नोंदी कायमच्या नष्ट करा',
+    bulkDeleteArchivedLogsSuccess: '{count} संग्रहित नोंदी यशस्वीरित्या कायमस्वरूपी हटवल्या.',
+    deletedArchivedLogsCount: 'हटवलेल्या संग्रहित नोंदी:'
   }
 };

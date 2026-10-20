@@ -8,7 +8,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
@@ -30,8 +33,23 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Modals for approve / reject
   const [selectedForApproval, setSelectedForApproval] = useState<RecoveryRequestItem | null>(null);
   const [selectedForRejection, setSelectedForRejection] = useState<RecoveryRequestItem | null>(null);
+
+  // Single Delete State
+  const [selectedForDeletion, setSelectedForDeletion] = useState<RecoveryRequestItem | null>(null);
+  const [singleDeleting, setSingleDeleting] = useState(false);
+  const [singleError, setSingleError] = useState<string | null>(null);
+
+  // Bulk Delete State
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkConfirmPhrase, setBulkConfirmPhrase] = useState('');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
+  // Feedback Toast
+  const [actionToast, setActionToast] = useState<string | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -68,6 +86,62 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
       });
     } catch {
       return isoStr;
+    }
+  };
+
+  const maskMobile = (mobile: string) => {
+    if (!mobile) return '—';
+    if (mobile.length <= 4) return mobile;
+    if (mobile.length >= 10) {
+      return `${mobile.slice(0, 3)}****${mobile.slice(-3)}`;
+    }
+    return `${mobile.slice(0, 2)}***${mobile.slice(-2)}`;
+  };
+
+  const handleSingleDelete = async () => {
+    if (!selectedForDeletion) return;
+    setSingleDeleting(true);
+    setSingleError(null);
+    try {
+      await adminApi.deleteRecoveryRequest(selectedForDeletion.id);
+      setSelectedForDeletion(null);
+      setActionToast(t.deleteRecoverySuccess);
+      setTimeout(() => setActionToast(null), 4000);
+      await fetchRequests();
+    } catch (err: any) {
+      setSingleError(err.message || 'Failed to delete recovery request');
+    } finally {
+      setSingleDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bulkConfirmPhrase.trim() !== 'DELETE ALL RECOVERY REQUESTS') {
+      setBulkError(
+        lang === 'mr'
+          ? 'कृपया अचूक शब्द "DELETE ALL RECOVERY REQUESTS" टाइप करा'
+          : 'Please type the exact phrase "DELETE ALL RECOVERY REQUESTS"'
+      );
+      return;
+    }
+
+    setBulkDeleting(true);
+    setBulkError(null);
+    try {
+      const res = await adminApi.bulkDeleteRecoveryRequests(bulkConfirmPhrase.trim());
+      setShowBulkModal(false);
+      setBulkConfirmPhrase('');
+      setActionToast(
+        t.bulkDeleteRecoverySuccess.replace('{count}', String(res.deletedCount ?? res.count ?? 0))
+      );
+      setTimeout(() => setActionToast(null), 5000);
+      setPage(1);
+      await fetchRequests();
+    } catch (err: any) {
+      setBulkError(err.message || 'Failed to bulk delete recovery requests');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -113,6 +187,14 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
 
   return (
     <div className="space-y-6">
+      {/* Success Toast */}
+      {actionToast && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2 shadow-sm animate-in fade-in duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{actionToast}</span>
+        </div>
+      )}
+
       {/* Controls Bar */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
@@ -120,10 +202,27 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
             <h2 className="text-lg font-bold text-slate-900">{t.recoveryTitle}</h2>
             <p className="text-xs text-slate-500 mt-0.5">{t.recoverySubtitle}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
               {t.filterStatus}: <strong className="font-mono text-brand-600">{total}</strong>
             </span>
+
+            {/* Bulk Delete All Recovery Requests Permanently */}
+            <button
+              type="button"
+              onClick={() => {
+                setBulkConfirmPhrase('');
+                setBulkError(null);
+                setShowBulkModal(true);
+              }}
+              disabled={loading || total === 0}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+              title={t.btnDeleteAllRecoveryRequests}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{t.btnDeleteAllRecoveryRequests}</span>
+            </button>
+
             <button
               onClick={fetchRequests}
               disabled={loading}
@@ -211,24 +310,34 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
                         {req.failed_attempts} / 4
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        {req.status === 'PENDING' ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => setSelectedForApproval(req)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition"
-                            >
-                              {t.btnVerifyApprove}
-                            </button>
-                            <button
-                              onClick={() => setSelectedForRejection(req)}
-                              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition"
-                            >
-                              {t.btnReject}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">—</span>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {req.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => setSelectedForApproval(req)}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition"
+                              >
+                                {t.btnVerifyApprove}
+                              </button>
+                              <button
+                                onClick={() => setSelectedForRejection(req)}
+                                className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition"
+                              >
+                                {t.btnReject}
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => {
+                              setSelectedForDeletion(req);
+                              setSingleError(null);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition"
+                            title={t.deleteRecoveryTooltip}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -259,22 +368,34 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
                     </div>
                   )}
 
-                  {req.status === 'PENDING' && (
-                    <div className="pt-2 flex gap-2">
-                      <button
-                        onClick={() => setSelectedForApproval(req)}
-                        className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold text-center transition"
-                      >
-                        {t.btnVerifyApprove}
-                      </button>
-                      <button
-                        onClick={() => setSelectedForRejection(req)}
-                        className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition"
-                      >
-                        {t.btnReject}
-                      </button>
-                    </div>
-                  )}
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    {req.status === 'PENDING' && (
+                      <>
+                        <button
+                          onClick={() => setSelectedForApproval(req)}
+                          className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold text-center transition"
+                        >
+                          {t.btnVerifyApprove}
+                        </button>
+                        <button
+                          onClick={() => setSelectedForRejection(req)}
+                          className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition"
+                        >
+                          {t.btnReject}
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSelectedForDeletion(req);
+                        setSingleError(null);
+                      }}
+                      className={`py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition ${req.status !== 'PENDING' ? 'w-full' : ''}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{t.btnDeleteRecoveryRequest}</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -307,7 +428,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
         )}
       </div>
 
-      {/* Modals */}
+      {/* Approve Modal */}
       {selectedForApproval && (
         <ApproveModal
           request={selectedForApproval}
@@ -319,6 +440,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
         />
       )}
 
+      {/* Reject Modal */}
       {selectedForRejection && (
         <RejectModal
           request={selectedForRejection}
@@ -328,6 +450,158 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
             fetchRequests();
           }}
         />
+      )}
+
+      {/* Single Delete Confirmation Modal */}
+      {selectedForDeletion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h4>{t.deleteRecoveryModalTitle}</h4>
+              </div>
+              <button
+                onClick={() => setSelectedForDeletion(null)}
+                disabled={singleDeleting}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Identifying Information */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.targetMobileLabel}:</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {maskMobile(selectedForDeletion.mobile_number)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.requestIdLabel}:</span>
+                <span className="font-mono text-slate-700 text-[11px]">
+                  {selectedForDeletion.id.substring(0, 12)}...
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.requestStatusLabel}:</span>
+                <div>{getStatusBadge(selectedForDeletion.status)}</div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.colReqTime}:</span>
+                <span className="text-slate-700">{formatDate(selectedForDeletion.created_at)}</span>
+              </div>
+            </div>
+
+            {/* Warning Text */}
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-relaxed font-medium">
+              {t.deleteRecoveryWarning}
+            </div>
+
+            {/* Error Message */}
+            {singleError && (
+              <div className="p-3 bg-rose-100 text-rose-800 text-xs rounded-lg font-semibold">
+                {singleError}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedForDeletion(null)}
+                disabled={singleDeleting}
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+              >
+                {t.btnCancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleSingleDelete}
+                disabled={singleDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+              >
+                {singleDeleting && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{t.btnConfirmDeleteRecovery}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h4>{t.deleteAllRecoveryModalTitle}</h4>
+              </div>
+              <button
+                onClick={() => setShowBulkModal(false)}
+                disabled={bulkDeleting}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Warning Text */}
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-relaxed font-medium">
+              {t.deleteAllRecoveryWarning.replace('{count}', String(total))}
+            </div>
+
+            {/* Error Message */}
+            {bulkError && (
+              <div className="p-3 bg-rose-100 text-rose-800 text-xs rounded-lg font-semibold">
+                {bulkError}
+              </div>
+            )}
+
+            {/* Confirmation Form */}
+            <form onSubmit={handleBulkDelete} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  {t.confirmPhraseBulkRecoveryLabel}
+                </label>
+                <input
+                  type="text"
+                  value={bulkConfirmPhrase}
+                  onChange={(e) => setBulkConfirmPhrase(e.target.value)}
+                  placeholder="DELETE ALL RECOVERY REQUESTS"
+                  autoFocus
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-sm uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkModal(false)}
+                  disabled={bulkDeleting}
+                  className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+                >
+                  {t.btnCancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    bulkDeleting ||
+                    bulkConfirmPhrase.trim() !== 'DELETE ALL RECOVERY REQUESTS'
+                  }
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+                >
+                  {bulkDeleting && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{t.btnConfirmBulkDeleteRecovery}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

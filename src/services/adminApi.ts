@@ -7,6 +7,10 @@ import type {
   DeletionResult,
   BulkDeletionResult,
   AuditArchiveResult,
+  RecoveryDeletionResult,
+  BulkRecoveryDeletionResult,
+  ArchivedLogDeletionResult,
+  BulkArchivedLogDeletionResult,
   VerificationMethod,
   RecoveryRequestStatus
 } from '../types/admin';
@@ -312,6 +316,19 @@ export const adminApi = {
     });
   },
 
+  async deleteRecoveryRequest(requestId: string): Promise<RecoveryDeletionResult> {
+    return this.request<RecoveryDeletionResult>(`/api/admin/recovery-requests/${requestId}/delete`, {
+      method: 'POST'
+    });
+  },
+
+  async bulkDeleteRecoveryRequests(confirmationPhrase: string): Promise<BulkRecoveryDeletionResult> {
+    return this.request<BulkRecoveryDeletionResult>('/api/admin/recovery-requests/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ confirmationPhrase })
+    });
+  },
+
   async deleteAccount(
     targetAccountId: string,
     confirmMobileNumber: string,
@@ -351,6 +368,19 @@ export const adminApi = {
       body: JSON.stringify({
         confirmationPhrase
       })
+    });
+  },
+
+  async deleteArchivedAuditLog(id: string): Promise<ArchivedLogDeletionResult> {
+    return this.request<ArchivedLogDeletionResult>(`/api/admin/audit-logs/${id}/delete`, {
+      method: 'POST'
+    });
+  },
+
+  async bulkDeleteArchivedAuditLogs(confirmationPhrase: string): Promise<BulkArchivedLogDeletionResult> {
+    return this.request<BulkArchivedLogDeletionResult>('/api/admin/audit-logs/bulk-delete-archived', {
+      method: 'POST',
+      body: JSON.stringify({ confirmationPhrase })
     });
   },
 

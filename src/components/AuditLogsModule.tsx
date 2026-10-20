@@ -39,15 +39,26 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
 
-  // Single Archive State
+  // Single Archive State (Active tab)
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [actionToast, setActionToast] = useState<string | null>(null);
 
-  // Bulk Archive Modal State
+  // Bulk Archive Modal State (Active tab)
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkConfirmPhrase, setBulkConfirmPhrase] = useState('');
   const [bulkArchiving, setBulkArchiving] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+
+  // Single Permanent Delete State (Archived tab)
+  const [selectedForArchivedDeletion, setSelectedForArchivedDeletion] = useState<AuditLogItem | null>(null);
+  const [singleDeletingArchived, setSingleDeletingArchived] = useState(false);
+  const [singleArchivedError, setSingleArchivedError] = useState<string | null>(null);
+
+  // Bulk Permanent Delete Modal State (Archived tab)
+  const [showBulkArchivedDeleteModal, setShowBulkArchivedDeleteModal] = useState(false);
+  const [bulkArchivedConfirmPhrase, setBulkArchivedConfirmPhrase] = useState('');
+  const [bulkArchivedDeleting, setBulkArchivedDeleting] = useState(false);
+  const [bulkArchivedError, setBulkArchivedError] = useState<string | null>(null);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -122,6 +133,56 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
       setBulkError(err.message || 'Failed to bulk archive audit logs');
     } finally {
       setBulkArchiving(false);
+    }
+  };
+
+  const handleSingleDeleteArchived = async () => {
+    if (!selectedForArchivedDeletion) return;
+    setSingleDeletingArchived(true);
+    setSingleArchivedError(null);
+    try {
+      await adminApi.deleteArchivedAuditLog(selectedForArchivedDeletion.id);
+      setSelectedForArchivedDeletion(null);
+      setActionToast(t.deleteArchivedLogSuccess);
+      setTimeout(() => setActionToast(null), 4000);
+      await fetchLogs();
+    } catch (err: any) {
+      setSingleArchivedError(err.message || 'Failed to delete archived audit log');
+    } finally {
+      setSingleDeletingArchived(false);
+    }
+  };
+
+  const handleBulkDeleteArchivedSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bulkArchivedConfirmPhrase.trim() !== 'DELETE ALL ARCHIVED LOGS') {
+      setBulkArchivedError(
+        lang === 'mr'
+          ? 'कृपया अचूक शब्द "DELETE ALL ARCHIVED LOGS" टाइप करा'
+          : 'Please type the exact phrase "DELETE ALL ARCHIVED LOGS"'
+      );
+      return;
+    }
+
+    setBulkArchivedDeleting(true);
+    setBulkArchivedError(null);
+    try {
+      const res = await adminApi.bulkDeleteArchivedAuditLogs(bulkArchivedConfirmPhrase.trim());
+      setShowBulkArchivedDeleteModal(false);
+      setBulkArchivedConfirmPhrase('');
+      setActionToast(
+        t.bulkDeleteArchivedLogsSuccess.replace(
+          '{count}',
+          String(res.deletedCount ?? res.count ?? 0)
+        )
+      );
+      setTimeout(() => setActionToast(null), 5000);
+      setPage(1);
+      await fetchLogs();
+    } catch (err: any) {
+      setBulkArchivedError(err.message || 'Failed to bulk delete archived audit logs');
+    } finally {
+      setBulkArchivedDeleting(false);
     }
   };
 
@@ -222,7 +283,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
 
       {/* Success Toast */}
       {actionToast && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2 shadow-sm animate-in fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{actionToast}</span>
         </div>
@@ -276,11 +337,29 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                   setBulkError(null);
                   setShowBulkModal(true);
                 }}
-                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                disabled={loading || total === 0}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
                 title={t.btnDeleteAllAuditLogs}
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{t.btnDeleteAllAuditLogs}</span>
+              </button>
+            )}
+
+            {activeTab === 'archived' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkArchivedConfirmPhrase('');
+                  setBulkArchivedError(null);
+                  setShowBulkArchivedDeleteModal(true);
+                }}
+                disabled={loading || total === 0}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                title={t.btnDeleteAllArchivedLogs}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t.btnDeleteAllArchivedLogs}</span>
               </button>
             )}
 
@@ -332,10 +411,14 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
               <option value="ADMIN_LOGOUT">{t.actionLogout}</option>
               <option value="APPROVE_RECOVERY">{t.actionApprove}</option>
               <option value="REJECT_RECOVERY">{t.actionReject}</option>
+              <option value="RECOVERY_REQUEST_DELETED">RECOVERY_REQUEST_DELETED</option>
+              <option value="RECOVERY_REQUESTS_BULK_DELETED">RECOVERY_REQUESTS_BULK_DELETED</option>
               <option value="ACCOUNT_DELETED">{t.actionDelete}</option>
               <option value="ACCOUNTS_BULK_DELETED">ACCOUNTS_BULK_DELETED</option>
               <option value="AUDIT_LOG_ARCHIVED">AUDIT_LOG_ARCHIVED</option>
               <option value="AUDIT_LOGS_BULK_ARCHIVED">AUDIT_LOGS_BULK_ARCHIVED</option>
+              <option value="ARCHIVED_AUDIT_LOG_DELETED">ARCHIVED_AUDIT_LOG_DELETED</option>
+              <option value="ARCHIVED_AUDIT_LOGS_BULK_DELETED">ARCHIVED_AUDIT_LOGS_BULK_DELETED</option>
               <option value="UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT">{t.actionUnauthorized}</option>
             </select>
           </div>
@@ -377,9 +460,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                     <th className="py-3 px-4">{t.colAdmin}</th>
                     <th className="py-3 px-4">{t.colDetails}</th>
                     <th className="py-3 px-4">{t.colIp}</th>
-                    {activeTab === 'active' && (
-                      <th className="py-3 px-4 text-right">Action</th>
-                    )}
+                    <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -406,8 +487,8 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                         <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
                           {log.ip_address || '—'}
                         </td>
-                        {activeTab === 'active' && (
-                          <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4 text-right">
+                          {activeTab === 'active' ? (
                             <button
                               type="button"
                               onClick={() => handleArchiveSingle(log.id)}
@@ -418,8 +499,22 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                               <Trash2 className="w-3.5 h-3.5" />
                               <span className="hidden lg:inline">{t.btnArchiveLog}</span>
                             </button>
-                          </td>
-                        )}
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedForArchivedDeletion(log);
+                                setSingleArchivedError(null);
+                              }}
+                              disabled={singleDeletingArchived}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                              title={t.deleteArchivedLogTooltip}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden lg:inline">{t.btnDeleteArchivedLog}</span>
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -450,7 +545,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                         <span className="font-mono text-[10px] text-slate-400">
                           {log.ip_address || '—'}
                         </span>
-                        {activeTab === 'active' && (
+                        {activeTab === 'active' ? (
                           <button
                             type="button"
                             onClick={() => handleArchiveSingle(log.id)}
@@ -459,6 +554,20 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                             title={t.archiveLogTooltip}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedForArchivedDeletion(log);
+                              setSingleArchivedError(null);
+                            }}
+                            disabled={singleDeletingArchived}
+                            className="px-2 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-md text-xs font-semibold flex items-center gap-1 transition"
+                            title={t.deleteArchivedLogTooltip}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{t.btnDeleteArchivedLog}</span>
                           </button>
                         )}
                       </div>
@@ -504,7 +613,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
         )}
       </div>
 
-      {/* Bulk Archive Confirmation Modal */}
+      {/* Bulk Archive Confirmation Modal (Active Logs) */}
       {showBulkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
@@ -570,6 +679,169 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
                 >
                   {bulkArchiving && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
                   <span>{t.btnConfirmBulkArchiveAudit}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Single Permanent Delete Modal (Archived Logs) */}
+      {selectedForArchivedDeletion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h4>{t.deleteArchivedLogModalTitle}</h4>
+              </div>
+              <button
+                onClick={() => setSelectedForArchivedDeletion(null)}
+                disabled={singleDeletingArchived}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Identifying Information */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Log ID:</span>
+                <span className="font-mono text-slate-700 text-[11px]">
+                  {selectedForArchivedDeletion.id.substring(0, 12)}...
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.colAction}:</span>
+                <div>{getActionBadge(selectedForArchivedDeletion.action)}</div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.colTargetMobile}:</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {selectedForArchivedDeletion.target_mobile_number || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.colAdmin}:</span>
+                <span className="text-slate-700">
+                  {selectedForArchivedDeletion.admin_name || selectedForArchivedDeletion.admin_user_id || 'System'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">{t.colTimestamp}:</span>
+                <span className="text-slate-700">
+                  {formatAuditTimestamp(
+                    selectedForArchivedDeletion.created_at || selectedForArchivedDeletion.timestamp,
+                    lang
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Warning Text */}
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-relaxed font-medium">
+              {t.deleteArchivedLogWarning}
+            </div>
+
+            {/* Error Message */}
+            {singleArchivedError && (
+              <div className="p-3 bg-rose-100 text-rose-800 text-xs rounded-lg font-semibold">
+                {singleArchivedError}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedForArchivedDeletion(null)}
+                disabled={singleDeletingArchived}
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+              >
+                {t.btnCancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleSingleDeleteArchived}
+                disabled={singleDeletingArchived}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+              >
+                {singleDeletingArchived && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{t.btnConfirmDeleteArchivedLog}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Permanent Delete Modal (Archived Logs) */}
+      {showBulkArchivedDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h4>{t.deleteAllArchivedLogsModalTitle}</h4>
+              </div>
+              <button
+                onClick={() => setShowBulkArchivedDeleteModal(false)}
+                disabled={bulkArchivedDeleting}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Warning Text */}
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-relaxed font-medium">
+              {t.deleteAllArchivedLogsWarning.replace('{count}', String(total))}
+            </div>
+
+            {/* Error Message */}
+            {bulkArchivedError && (
+              <div className="p-3 bg-rose-100 text-rose-800 text-xs rounded-lg font-semibold">
+                {bulkArchivedError}
+              </div>
+            )}
+
+            {/* Confirmation Form */}
+            <form onSubmit={handleBulkDeleteArchivedSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  {t.confirmPhraseBulkArchivedLogsLabel}
+                </label>
+                <input
+                  type="text"
+                  value={bulkArchivedConfirmPhrase}
+                  onChange={(e) => setBulkArchivedConfirmPhrase(e.target.value)}
+                  placeholder="DELETE ALL ARCHIVED LOGS"
+                  autoFocus
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-sm uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkArchivedDeleteModal(false)}
+                  disabled={bulkArchivedDeleting}
+                  className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+                >
+                  {t.btnCancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    bulkArchivedDeleting ||
+                    bulkArchivedConfirmPhrase.trim() !== 'DELETE ALL ARCHIVED LOGS'
+                  }
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+                >
+                  {bulkArchivedDeleting && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{t.btnConfirmBulkDeleteArchivedLogs}</span>
                 </button>
               </div>
             </form>

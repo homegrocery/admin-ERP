@@ -85,6 +85,7 @@ export interface DeletionResult {
 export interface BulkDeletionResult {
   success: boolean;
   deletedCount: number;
+  count?: number;
   deletedAccountIds: string[];
   deletedAt: string;
   cascadedTotals: Record<string, number>;
@@ -97,3 +98,31 @@ export interface AuditArchiveResult {
   archived_at: string;
 }
 
+export interface RecoveryDeletionResult {
+  success: boolean;
+  id: string;
+  revokedAuthorizations: number;
+  deletedTempCodes: number;
+}
+
+export interface BulkRecoveryDeletionResult {
+  success: boolean;
+  deletedCount: number;
+  count?: number;
+  deletedAt: string;
+  revokedAuthorizations: number;
+  deletedTempCodes: number;
+}
+
+export interface ArchivedLogDeletionResult {
+  success: boolean;
+  id: string;
+  deletedAt: string;
+}
+
+export interface BulkArchivedLogDeletionResult {
+  success: boolean;
+  count: number;
+  deletedCount?: number;
+  deletedAt: string;
+}
