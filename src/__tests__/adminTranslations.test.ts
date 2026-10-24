@@ -36,4 +36,15 @@ describe('Admin ERP Bilingual Translations', () => {
     expect(adminTranslations.en.cannotDeleteOwner).toContain('Santosh Koli');
     expect(adminTranslations.mr.cannotDeleteOwner).toContain('संतोष कोळी');
   });
+
+  it('Feature 1 & Feature 3: should have accurate recovery code status and account lockout strings', () => {
+    expect(adminTranslations.en.codeConfigured).toBe('Set');
+    expect(adminTranslations.en.codeNotConfigured).toBe('Not Set');
+    expect(adminTranslations.mr.codeConfigured).toBe('सेट');
+    expect(adminTranslations.mr.codeNotConfigured).toBe('सेट नाही');
+    expect(adminTranslations.en.btnLockAccount).toBe('Lock Account');
+    expect(adminTranslations.en.btnActivateAccount).toBe('Activate Account');
+    expect(adminTranslations.mr.btnLockAccount).toBe('खाते लॉक करा');
+    expect(adminTranslations.mr.btnActivateAccount).toBe('खाते सक्रिय करा');
+  });
 });

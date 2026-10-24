@@ -22,7 +22,14 @@ export interface AccountMetadata {
   is_locked: boolean;
   failed_login_attempts: number;
   has_active_recovery_code: boolean;
+  has_recovery_code?: boolean;
   has_pending_recovery_request: boolean;
+}
+
+export interface AccountLockResult {
+  success: boolean;
+  is_locked: boolean;
+  account_id: string;
 }
 
 export type RecoveryRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'COMPLETED';

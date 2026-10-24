@@ -12,7 +12,8 @@ import type {
   ArchivedLogDeletionResult,
   BulkArchivedLogDeletionResult,
   VerificationMethod,
-  RecoveryRequestStatus
+  RecoveryRequestStatus,
+  AccountLockResult
 } from '../types/admin';
 
 export const ADMIN_ERP_CANONICAL_URL = 'https://homegrocery.github.io/admin-ERP/';
@@ -353,6 +354,20 @@ export const adminApi = {
         confirmationPhrase,
         expectedCount
       })
+    });
+  },
+
+  async lockAccount(targetAccountId: string, reason?: string): Promise<AccountLockResult> {
+    return this.request<AccountLockResult>(`/api/admin/accounts/${targetAccountId}/lock`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    });
+  },
+
+  async activateAccount(targetAccountId: string, reason?: string): Promise<AccountLockResult> {
+    return this.request<AccountLockResult>(`/api/admin/accounts/${targetAccountId}/activate`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
     });
   },
 

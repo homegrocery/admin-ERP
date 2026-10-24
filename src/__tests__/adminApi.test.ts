@@ -393,4 +393,58 @@ describe('Admin ERP API Client', () => {
       })
     );
   });
+
+  it('Feature 3: should call POST /api/admin/accounts/:id/lock on lockAccount', async () => {
+    adminApi.setToken('auth-token-xyz');
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          success: true,
+          is_locked: true,
+          account_id: 'usr-target-123'
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.lockAccount('usr-target-123', 'Administrative lockout test');
+    expect(res.success).toBe(true);
+    expect(res.is_locked).toBe(true);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://home-grocery-api.onrender.com/api/admin/accounts/usr-target-123/lock',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Administrative lockout test' })
+      })
+    );
+  });
+
+  it('Feature 3: should call POST /api/admin/accounts/:id/activate on activateAccount', async () => {
+    adminApi.setToken('auth-token-xyz');
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          success: true,
+          is_locked: false,
+          account_id: 'usr-target-123'
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.activateAccount('usr-target-123', 'User requested unlock');
+    expect(res.success).toBe(true);
+    expect(res.is_locked).toBe(false);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://home-grocery-api.onrender.com/api/admin/accounts/usr-target-123/activate',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ reason: 'User requested unlock' })
+      })
+    );
+  });
 });

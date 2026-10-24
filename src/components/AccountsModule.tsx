@@ -9,7 +9,10 @@ import {
   RotateCw,
   ChevronLeft,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Lock,
+  Unlock,
+  ShieldCheck
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
@@ -31,6 +34,13 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'locked'>('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Lock / Activate Action State
+  const [targetActionAccount, setTargetActionAccount] = useState<AccountMetadata | null>(null);
+  const [actionType, setActionType] = useState<'lock' | 'activate' | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -62,6 +72,29 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
     fetchAccounts();
   };
 
+  const handleConfirmAction = async () => {
+    if (!targetActionAccount || !actionType) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      if (actionType === 'lock') {
+        await adminApi.lockAccount(targetActionAccount.id);
+        setActionSuccessMessage(t.lockSuccess);
+      } else {
+        await adminApi.activateAccount(targetActionAccount.id);
+        setActionSuccessMessage(t.activateSuccess);
+      }
+      setTargetActionAccount(null);
+      setActionType(null);
+      await fetchAccounts();
+      setTimeout(() => setActionSuccessMessage(null), 4000);
+    } catch (err: any) {
+      setActionError(err.message || 'Action failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatDate = (isoStr: string | null | undefined, fallback?: string) => {
     if (!isoStr) return fallback !== undefined ? fallback : t.neverLoggedIn;
     try {
@@ -84,6 +117,14 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
     <div className="space-y-6">
       {/* Privacy Guarantee Banner */}
       <PrivacyNotice lang={lang} />
+
+      {/* Success Notification */}
+      {actionSuccessMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{actionSuccessMessage}</span>
+        </div>
+      )}
 
       {/* Header and Controls */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-6">
@@ -182,120 +223,202 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
                     <th className="py-3 px-4">{t.colPinFormat}</th>
                     <th className="py-3 px-4">{t.colCreated}</th>
                     <th className="py-3 px-4">{t.colLastLogin}</th>
+                    <th className="py-3 px-4 text-right">{t.colActions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
-                  {accounts.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-3.5 px-4 font-mono font-semibold text-slate-900">
-                        {acc.mobile_number}
-                        {acc.role === 'admin' && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">
-                            OWNER
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
-                        {acc.id.substring(0, 8)}...
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {acc.is_locked ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
-                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                            {t.statusLocked}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            {t.statusActive}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {acc.has_active_recovery_code ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                            {t.codeConfigured}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            {t.codeNotConfigured}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {acc.has_pending_recovery_request ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 animate-pulse">
-                            <Clock className="w-3 h-3 text-blue-600" />
-                            {t.hasPendingRequest}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {acc.pin_length || 4} {t.pinDigits}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {formatDate(acc.created_at, '-')}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {formatDate(acc.last_login_at)}
-                      </td>
-                    </tr>
-                  ))}
+                  {accounts.map((acc) => {
+                    const isOwner = acc.role === 'admin' || acc.mobile_number === '9356755100';
+                    const hasRecovery = Boolean(acc.has_active_recovery_code ?? acc.has_recovery_code);
+
+                    return (
+                      <tr key={acc.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4 font-mono font-semibold text-slate-900">
+                          {acc.mobile_number}
+                          {isOwner && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">
+                              OWNER
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
+                          {acc.id.substring(0, 8)}...
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {acc.is_locked ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
+                              <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                              {t.statusLocked}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              {t.statusActive}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {hasRecovery ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                              {t.codeConfigured}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                              {t.codeNotConfigured}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {acc.has_pending_recovery_request ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 animate-pulse">
+                              <Clock className="w-3 h-3 text-blue-600" />
+                              {t.hasPendingRequest}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600">
+                          {acc.pin_length || 4} {t.pinDigits}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500">
+                          {formatDate(acc.created_at, '-')}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500">
+                          {formatDate(acc.last_login_at)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {isOwner ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200" title="Owner account protected from administrative lockout">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                              {t.ownerProtectedBadge}
+                            </span>
+                          ) : acc.is_locked ? (
+                            <button
+                              onClick={() => {
+                                setTargetActionAccount(acc);
+                                setActionType('activate');
+                                setActionError(null);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold transition"
+                            >
+                              <Unlock className="w-3 h-3 text-emerald-600" />
+                              {t.btnActivateAccount}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setTargetActionAccount(acc);
+                                setActionType('lock');
+                                setActionError(null);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-semibold transition"
+                            >
+                              <Lock className="w-3 h-3 text-rose-600" />
+                              {t.btnLockAccount}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Card View (< 768px) */}
             <div className="md:hidden divide-y divide-slate-100">
-              {accounts.map((acc) => (
-                <div key={acc.id} className="p-4 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-sm text-slate-900">
-                      {acc.mobile_number}
-                    </span>
-                    {acc.is_locked ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800">
-                        <XCircle className="w-3 h-3 text-rose-600" />
-                        {t.statusLocked}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        {t.statusActive}
-                      </span>
-                    )}
-                  </div>
+              {accounts.map((acc) => {
+                const isOwner = acc.role === 'admin' || acc.mobile_number === '9356755100';
+                const hasRecovery = Boolean(acc.has_active_recovery_code ?? acc.has_recovery_code);
 
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1 border-t border-slate-50">
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">{t.colRecoveryCode}</span>
-                      <span className={acc.has_active_recovery_code ? "text-emerald-700 font-medium" : "text-amber-600"}>
-                        {acc.has_active_recovery_code ? t.codeConfigured : t.codeNotConfigured}
+                return (
+                  <div key={acc.id} className="p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-sm text-slate-900">
+                        {acc.mobile_number}
+                        {isOwner && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">
+                            OWNER
+                          </span>
+                        )}
                       </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">{t.colPendingRequest}</span>
-                      {acc.has_pending_recovery_request ? (
-                        <span className="text-blue-700 font-semibold">{t.hasPendingRequest}</span>
+                      {acc.is_locked ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800">
+                          <XCircle className="w-3 h-3 text-rose-600" />
+                          {t.statusLocked}
+                        </span>
                       ) : (
-                        <span className="text-slate-400">{t.noPendingRequest}</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          {t.statusActive}
+                        </span>
                       )}
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">{t.colPinFormat}</span>
-                      <span className="font-mono">{acc.pin_length || 4} {t.pinDigits}</span>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1 border-t border-slate-50">
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t.colRecoveryCode}</span>
+                        <span className={hasRecovery ? "text-emerald-700 font-medium" : "text-amber-600"}>
+                          {hasRecovery ? t.codeConfigured : t.codeNotConfigured}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t.colPendingRequest}</span>
+                        {acc.has_pending_recovery_request ? (
+                          <span className="text-blue-700 font-semibold">{t.hasPendingRequest}</span>
+                        ) : (
+                          <span className="text-slate-400">{t.noPendingRequest}</span>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t.colPinFormat}</span>
+                        <span className="font-mono">{acc.pin_length || 4} {t.pinDigits}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">{t.colLastLogin}</span>
+                        <span className="truncate">{formatDate(acc.last_login_at)}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">{t.colLastLogin}</span>
-                      <span className="truncate">{formatDate(acc.last_login_at)}</span>
+
+                    {/* Mobile Action Controls */}
+                    <div className="pt-2 flex items-center justify-end">
+                      {isOwner ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          {t.ownerProtectedBadge}
+                        </span>
+                      ) : acc.is_locked ? (
+                        <button
+                          onClick={() => {
+                            setTargetActionAccount(acc);
+                            setActionType('activate');
+                            setActionError(null);
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition"
+                        >
+                          <Unlock className="w-3.5 h-3.5 text-emerald-600" />
+                          {t.btnActivateAccount}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setTargetActionAccount(acc);
+                            setActionType('lock');
+                            setActionError(null);
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition"
+                        >
+                          <Lock className="w-3.5 h-3.5 text-rose-600" />
+                          {t.btnLockAccount}
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Pagination Controls */}
@@ -325,6 +448,90 @@ export const AccountsModule: React.FC<AccountsModuleProps> = ({ lang }) => {
           </>
         )}
       </div>
+
+      {/* Confirmation Modal for Lock / Activate (Feature 3) */}
+      {targetActionAccount && actionType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className={`p-2.5 rounded-xl ${actionType === 'lock' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                {actionType === 'lock' ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {actionType === 'lock' ? t.lockAccountModalTitle : t.activateAccountModalTitle}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {actionType === 'lock' ? t.confirmLockPrompt : t.confirmActivatePrompt}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">{t.colMobile}:</span>
+                <span className="font-mono font-bold text-slate-800">{targetActionAccount.mobile_number}</span>
+              </div>
+              {targetActionAccount.full_name && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{lang === 'mr' ? 'नाव:' : 'Name:'}</span>
+                  <span className="font-medium text-slate-800">{targetActionAccount.full_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-500">{t.colUserId}:</span>
+                <span className="font-mono text-slate-600">{targetActionAccount.id.substring(0, 12)}...</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">{t.colStatus}:</span>
+                <span className={`font-semibold ${targetActionAccount.is_locked ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {targetActionAccount.is_locked ? t.statusLocked : t.statusActive}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {actionType === 'lock' ? t.lockNotice : t.activateNotice}
+            </p>
+
+            {actionError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
+                {actionError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetActionAccount(null);
+                  setActionType(null);
+                  setActionError(null);
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition"
+              >
+                {t.cancelBtn}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={actionLoading}
+                className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-sm transition flex items-center gap-1.5 ${
+                  actionType === 'lock'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {actionLoading && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
+                {actionType === 'lock'
+                  ? (actionLoading ? t.lockingAccount : t.btnLockAccount)
+                  : (actionLoading ? t.activatingAccount : t.btnActivateAccount)}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
