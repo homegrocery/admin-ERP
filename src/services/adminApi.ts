@@ -13,7 +13,9 @@ import type {
   BulkArchivedLogDeletionResult,
   VerificationMethod,
   RecoveryRequestStatus,
-  AccountLockResult
+  AccountLockResult,
+  LoginAttemptItem,
+  ReactivationRequestItem
 } from '../types/admin';
 
 export const ADMIN_ERP_CANONICAL_URL = 'https://homegrocery.github.io/admin-ERP/';
@@ -366,6 +368,78 @@ export const adminApi = {
 
   async activateAccount(targetAccountId: string, reason?: string): Promise<AccountLockResult> {
     return this.request<AccountLockResult>(`/api/admin/accounts/${targetAccountId}/activate`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    });
+  },
+
+  async getLoginAttempts(params: {
+    page?: number;
+    limit?: number;
+    userId?: string;
+    mobileNumber?: string;
+  } = {}): Promise<{
+    attempts: LoginAttemptItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', String(params.page));
+    if (params.limit) query.append('limit', String(params.limit));
+    if (params.userId) query.append('userId', params.userId);
+    if (params.mobileNumber) query.append('mobileNumber', params.mobileNumber);
+
+    return this.request(`/api/admin/login-attempts?${query.toString()}`);
+  },
+
+  async getAccountLoginAttempts(
+    accountId: string,
+    page?: number,
+    limit?: number
+  ): Promise<{
+    attempts: LoginAttemptItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const query = new URLSearchParams();
+    if (page) query.append('page', String(page));
+    if (limit) query.append('limit', String(limit));
+
+    return this.request(`/api/admin/accounts/${accountId}/login-attempts?${query.toString()}`);
+  },
+
+  async getReactivationRequests(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  } = {}): Promise<{
+    requests: ReactivationRequestItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', String(params.page));
+    if (params.limit) query.append('limit', String(params.limit));
+    if (params.status && params.status !== 'ALL') query.append('status', params.status);
+
+    return this.request(`/api/admin/reactivation-requests?${query.toString()}`);
+  },
+
+  async approveReactivationRequest(requestId: string, notes?: string): Promise<{ success: boolean; message: string; messageMr: string }> {
+    return this.request(`/api/admin/reactivation-requests/${requestId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ notes })
+    });
+  },
+
+  async rejectReactivationRequest(requestId: string, reason?: string): Promise<{ success: boolean; message: string; messageMr: string }> {
+    return this.request(`/api/admin/reactivation-requests/${requestId}/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason })
     });

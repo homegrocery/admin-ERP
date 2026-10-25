@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header, type AdminTab } from './components/Header';
 import { LoginView } from './components/LoginView';
 import { AccountsModule } from './components/AccountsModule';
+import { ReactivationRequestsModule } from './components/ReactivationRequestsModule';
 import { RecoveryRequestsModule } from './components/RecoveryRequestsModule';
 import { DeleteAccountModule } from './components/DeleteAccountModule';
 import { AuditLogsModule } from './components/AuditLogsModule';
@@ -108,6 +109,7 @@ export function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <ErrorBoundary>
           {currentTab === 'accounts' && <AccountsModule lang={lang} />}
+          {currentTab === 'reactivation' && <ReactivationRequestsModule lang={lang} />}
           {currentTab === 'recovery' && <RecoveryRequestsModule lang={lang} />}
           {currentTab === 'delete' && <DeleteAccountModule lang={lang} />}
           {currentTab === 'audit' && <AuditLogsModule lang={lang} />}

@@ -9,12 +9,13 @@ import {
   Shield,
   Menu,
   X,
-  UserCog
+  UserCog,
+  Unlock
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import type { AdminUser } from '../types/admin';
 
-export type AdminTab = 'accounts' | 'recovery' | 'delete' | 'audit' | 'profile';
+export type AdminTab = 'accounts' | 'reactivation' | 'recovery' | 'delete' | 'audit' | 'profile';
 
 interface HeaderProps {
   currentTab: AdminTab;
@@ -38,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: 'accounts', label: t.navAccounts, icon: <Users className="w-4 h-4" /> },
+    { id: 'reactivation', label: t.navReactivation || 'Reactivation Requests', icon: <Unlock className="w-4 h-4" /> },
     { id: 'recovery', label: t.navRecovery, icon: <KeyRound className="w-4 h-4" /> },
     { id: 'delete', label: t.navDelete, icon: <UserX className="w-4 h-4" /> },
     { id: 'audit', label: t.navAudit, icon: <ShieldAlert className="w-4 h-4" /> },

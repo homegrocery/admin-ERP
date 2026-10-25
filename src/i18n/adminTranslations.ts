@@ -14,6 +14,7 @@ export const adminTranslations = {
 
     // Navigation Tabs
     navAccounts: 'All Accounts',
+    navReactivation: 'Reactivation Requests',
     navRecovery: 'Recovery Requests',
     navDelete: 'Delete Account',
     navAudit: 'Security & Audit',
@@ -298,6 +299,7 @@ export const adminTranslations = {
 
     // Navigation Tabs
     navAccounts: 'सर्व खाती',
+    navReactivation: 'पुन्हा सक्रिय विनंत्या',
     navRecovery: 'रिकव्हरी विनंत्या',
     navDelete: 'खाते हटवा',
     navAudit: 'सुरक्षा आणि नोंदी',

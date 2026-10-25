@@ -20,6 +20,8 @@ export interface AccountMetadata {
   created_at: string;
   last_login_at: string | null;
   is_locked: boolean;
+  lock_type?: 'AUTOMATIC' | 'ADMINISTRATIVE' | null;
+  lock_reason?: string | null;
   failed_login_attempts: number;
   has_active_recovery_code: boolean;
   has_recovery_code?: boolean;
@@ -133,3 +135,36 @@ export interface BulkArchivedLogDeletionResult {
   deletedCount?: number;
   deletedAt: string;
 }
+
+export interface LoginAttemptItem {
+  id: string;
+  user_id: string | null;
+  mobile_number: string;
+  attempted_at: string;
+  outcome: 'SUCCESS' | 'FAILURE';
+  reason: string;
+  consecutive_failed_attempts: number;
+  lock_triggered: number;
+  lock_type: 'AUTOMATIC' | 'ADMINISTRATIVE' | null;
+  ip_address: string | null;
+  request_id: string | null;
+  user_full_name?: string;
+}
+
+export interface ReactivationRequestItem {
+  id: string;
+  user_id: string;
+  mobile_number: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  lock_type: 'AUTOMATIC' | 'ADMINISTRATIVE' | null;
+  lock_reason: string | null;
+  failed_attempts_at_lock: number;
+  admin_user_id: string | null;
+  admin_notes: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user_full_name?: string;
+}
+
