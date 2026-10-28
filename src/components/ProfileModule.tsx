@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
+import { refreshCoordinator } from '../services/refreshCoordinator';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import type { AdminUser } from '../types/admin';
 
 interface ProfileModuleProps {
@@ -58,6 +60,24 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
   const [pinSuccess, setPinSuccess] = useState<string | null>(null);
   const [pinError, setPinError] = useState<string | null>(null);
 
+  // Safe UX: Auto-refresh admin profile without wiping unsaved user input
+  useAutoRefresh('profile', async () => {
+    try {
+      const res = await adminApi.checkSession();
+      if (res?.admin) {
+        onProfileUpdate(res.admin);
+        // Only update local input if not dirty
+        if (fullName === adminUser.full_name || fullName === adminUser.username) {
+          setFullName(res.admin.full_name || res.admin.username || 'Santosh Koli');
+        } else {
+          setProfileError(t.recordUpdatedRemotely);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  });
+
   const handleCopyId = () => {
     if (adminUser.id) {
       navigator.clipboard.writeText(adminUser.id);
@@ -89,6 +109,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
         onLanguageChange(preferredLang);
       }
       setProfileSuccess(t.profileUpdatedSuccess);
+      refreshCoordinator.triggerImmediateCheck();
       setTimeout(() => setProfileSuccess(null), 4000);
     } catch (err: any) {
       setProfileError(err.message || 'Failed to update profile');
@@ -132,6 +153,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
       setCurrentPin('');
       setNewPin('');
       setConfirmPin('');
+      refreshCoordinator.triggerImmediateCheck();
       setTimeout(() => setPinSuccess(null), 6000);
     } catch (err: any) {
       setPinError(err.message || 'Failed to change PIN');

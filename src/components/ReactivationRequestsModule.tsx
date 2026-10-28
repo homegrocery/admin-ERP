@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
+import { refreshCoordinator } from '../services/refreshCoordinator';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import type { ReactivationRequestItem } from '../types/admin';
 
 interface ReactivationRequestsModuleProps {
@@ -42,9 +44,9 @@ export const ReactivationRequestsModule: React.FC<ReactivationRequestsModuleProp
   const [rejectReason, setRejectReason] = useState('');
   const [rejectLoading, setRejectLoading] = useState(false);
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchRequests = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    if (!isBackground) setError(null);
     try {
       const res = await adminApi.getReactivationRequests({
         page,
@@ -54,12 +56,33 @@ export const ReactivationRequestsModule: React.FC<ReactivationRequestsModuleProp
       setRequests(res.requests || []);
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
+
+      // Safe UX: Remote conflict detection if approve/reject modal is open
+      if (targetApproveRequest) {
+        const remoteItem = (res.requests || []).find(r => r.id === targetApproveRequest.id);
+        if (remoteItem && remoteItem.status !== 'PENDING') {
+          setTargetApproveRequest(remoteItem);
+          setError(t.concurrentConflictWarning);
+        }
+      }
+      if (targetRejectRequest) {
+        const remoteItem = (res.requests || []).find(r => r.id === targetRejectRequest.id);
+        if (remoteItem && remoteItem.status !== 'PENDING') {
+          setTargetRejectRequest(remoteItem);
+          setError(t.concurrentConflictWarning);
+        }
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load reactivation requests');
+      if (!isBackground) setError(err.message || 'Failed to load reactivation requests');
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
+
+  // Build 9 Phase 1.5: Universal Change-Based Auto-Refresh
+  useAutoRefresh('reactivation', () => {
+    fetchRequests(true);
+  });
 
   useEffect(() => {
     fetchRequests();
@@ -79,6 +102,7 @@ export const ReactivationRequestsModule: React.FC<ReactivationRequestsModuleProp
       setTargetApproveRequest(null);
       setApproveNotes('');
       await fetchRequests();
+      refreshCoordinator.triggerImmediateCheck();
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Approval failed');
@@ -101,6 +125,7 @@ export const ReactivationRequestsModule: React.FC<ReactivationRequestsModuleProp
       setTargetRejectRequest(null);
       setRejectReason('');
       await fetchRequests();
+      refreshCoordinator.triggerImmediateCheck();
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || 'Rejection failed');
@@ -163,7 +188,7 @@ export const ReactivationRequestsModule: React.FC<ReactivationRequestsModuleProp
               {isMarathi ? 'एकूण विनंत्या: ' : 'Total: '} <strong className="font-mono text-brand-600">{total}</strong>
             </span>
             <button
-              onClick={fetchRequests}
+              onClick={() => fetchRequests()}
               disabled={loading}
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
               title={t.refresh}

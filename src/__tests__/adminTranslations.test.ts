@@ -47,4 +47,30 @@ describe('Admin ERP Bilingual Translations', () => {
     expect(adminTranslations.mr.btnLockAccount).toBe('खाते लॉक करा');
     expect(adminTranslations.mr.btnActivateAccount).toBe('खाते सक्रिय करा');
   });
+
+  it('Build 9 Phase 1: should have reactivation approval consistency strings', () => {
+    expect(adminTranslations.en.pendingReactivation).toBe('Pending Reactivation');
+    expect(adminTranslations.mr.pendingReactivation).toBe('पुनर्सक्रियीकरण प्रलंबित');
+    expect(adminTranslations.en.viewReactivationRequest).toBe('View Reactivation Request');
+    expect(adminTranslations.mr.viewReactivationRequest).toBe('पुनर्सक्रियीकरण विनंती पहा');
+    expect(adminTranslations.en.directUnlockRestricted).toContain('Direct unlock is restricted');
+    expect(adminTranslations.mr.directUnlockRestricted).toContain('थेट अनलॉक प्रतिबंधित आहे');
+    expect(adminTranslations.en.reviewInReactivationTab).toContain('Reactivation Requests');
+    expect(adminTranslations.mr.reviewInReactivationTab).toContain('पुनर्सक्रियीकरण विनंत्या');
+  });
+
+  it('Build 9 Phase 2: should have Default Admin login and PIN show/hide strings in both languages', () => {
+    expect(adminTranslations.en.defaultAdmin).toBe('Default Admin');
+    expect(adminTranslations.mr.defaultAdmin).toBe('Default Admin');
+    expect(adminTranslations.en.adminIdentity).toBe('Administrator Identity');
+    expect(adminTranslations.mr.adminIdentity).toBe('प्रशासक ओळख');
+    expect(adminTranslations.en.defaultAdminSubtitle).toBeTruthy();
+    expect(adminTranslations.mr.defaultAdminSubtitle).toBeTruthy();
+    expect(adminTranslations.en.pinValidationLength).toContain('4 or 6');
+    expect(adminTranslations.mr.pinValidationLength).toContain('४ किंवा ६');
+    expect(adminTranslations.en.showPin).toBe('Show PIN');
+    expect(adminTranslations.en.hidePin).toBe('Hide PIN');
+    expect(adminTranslations.mr.showPin).toBe('पिन दाखवा');
+    expect(adminTranslations.mr.hidePin).toBe('पिन लपवा');
+  });
 });

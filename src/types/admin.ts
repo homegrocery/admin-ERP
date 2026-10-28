@@ -26,6 +26,9 @@ export interface AccountMetadata {
   has_active_recovery_code: boolean;
   has_recovery_code?: boolean;
   has_pending_recovery_request: boolean;
+  has_pending_reactivation_request?: boolean;
+  pending_reactivation_request_id?: string | null;
+  pending_reactivation_status?: string | null;
 }
 
 export interface AccountLockResult {
@@ -168,3 +171,150 @@ export interface ReactivationRequestItem {
   user_full_name?: string;
 }
 
+// Universal Auto-Refresh & Change Detection (Build 9 Phase 1.5 & Phase 2.5)
+export type RefreshDomain = 'accounts' | 'reactivation' | 'recovery' | 'audit' | 'profile' | 'website' | 'releases';
+
+export interface FreshnessMarkers {
+  accounts: string;
+  reactivation: string;
+  recovery: string;
+  audit: string;
+  profile: string;
+  website?: string;
+  releases?: string;
+}
+
+export interface FreshnessSummary {
+  totalAccounts: number;
+  lockedAccounts: number;
+  pendingReactivations: number;
+  pendingRecoveries: number;
+  totalAuditLogs: number;
+}
+
+export interface FreshnessData {
+  markers: FreshnessMarkers;
+  summary: FreshnessSummary;
+  etag: string;
+  serverTime: string;
+}
+
+export interface RefreshStatus {
+  isConnected: boolean;
+  isPaused: boolean;
+  lastChecked: Date | null;
+  lastChanged: Date | null;
+  error: string | null;
+}
+
+// Build 9 Phase 2.5: Website & Release Control Types
+export interface WebsiteContentData {
+  title: string;
+  titleMr: string;
+  tagline: string;
+  taglineMr: string;
+  heroAnnouncement: string;
+  heroAnnouncementMr: string;
+  heroBadge: string;
+  heroBadgeMr: string;
+  description: string;
+  descriptionMr: string;
+  downloadCta: string;
+  downloadCtaMr: string;
+  officialSiteUrl: string;
+  themeAccent: string;
+  features: Array<{ id: string; title: string; titleMr: string; desc: string; descMr: string }>;
+  faqs: Array<{ id: string; q: string; qMr: string; a: string; aMr: string }>;
+  supportLinks: {
+    privacyPolicy: string;
+    terms: string;
+    developerAttribution: string;
+    developerAttributionMr: string;
+  };
+}
+
+export interface PublicAnnouncementItem {
+  id: string;
+  title: string;
+  title_mr: string;
+  content: string;
+  content_mr: string;
+  category: 'FEATURE' | 'MAINTENANCE' | 'SECURITY' | 'UPDATE' | 'POLICY';
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  published_at: string | null;
+  expires_at: string | null;
+  safe_links: Array<{ label: string; url: string }> | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface ReleaseRecordItem {
+  id: string;
+  version_name: string;
+  versionName?: string;
+  build_number: number;
+  buildNumber?: number;
+  version_code: number;
+  versionCode?: number;
+  channel: 'STABLE' | 'BETA';
+  status: 'DRAFT' | 'PENDING_BUILD' | 'BUILDING' | 'BUILT_UNVERIFIED' | 'READY_TO_PUBLISH' | 'VERIFIED' | 'PUBLISHED' | 'ROLLED_BACK' | 'FAILED' | 'SUPERSEDED';
+  release_notes: string;
+  release_notes_mr: string;
+  is_mandatory: number;
+  min_supported_build: number;
+  apk_filename: string;
+  apk_download_url: string;
+  apk_size_bytes: number;
+  sha256_hash: string;
+  git_commit_hash?: string | null;
+  git_branch?: string;
+  build_logs?: string | null;
+  verified_at?: string | null;
+  published_at?: string | null;
+  rolled_back_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  initiated_by: string;
+  buildMode?: 'LOCAL_DEBUG' | 'LOCAL_RELEASE' | 'CI_DISPATCH';
+  isBlocked?: boolean;
+  blockReason?: string;
+}
+
+export interface ReleaseLogResponse {
+  id: string;
+  status: string;
+  versionName: string;
+  versionCode: number;
+  buildNumber: number;
+  buildLogs: string;
+  updatedAt: string;
+}
+
+export interface WebsiteOverviewData {
+  publishedUrl: string;
+  deploymentStatus: string;
+  lastPublishedAt: string | null;
+  publishedRevision: number;
+  publishedEtag: string;
+  hasUnpublishedDraft: boolean;
+  activeRelease: {
+    versionName: string;
+    buildNumber: number;
+    versionCode: number;
+    channel: string;
+    status: string;
+    apkFilename: string;
+    apkDownloadUrl: string;
+    apkSizeBytes: number;
+    sha256Hash: string;
+    publishedAt: string | null;
+  } | null;
+  announcementCounts: {
+    total: number;
+    published: number;
+    draft: number;
+    archived: number;
+  };
+}

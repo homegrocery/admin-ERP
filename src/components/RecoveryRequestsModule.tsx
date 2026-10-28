@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
+import { refreshCoordinator } from '../services/refreshCoordinator';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { ApproveModal } from './ApproveModal';
 import { RejectModal } from './RejectModal';
 import type { RecoveryRequestItem, RecoveryRequestStatus } from '../types/admin';
@@ -51,9 +53,9 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
   // Feedback Toast
   const [actionToast, setActionToast] = useState<string | null>(null);
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchRequests = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    if (!isBackground) setError(null);
     try {
       const res = await adminApi.getRecoveryRequests({
         page,
@@ -63,12 +65,33 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
       setRequests(res.requests || []);
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
+
+      // Safe UX: Remote conflict detection if approve/reject modal is open
+      if (selectedForApproval) {
+        const remoteItem = (res.requests || []).find(r => r.id === selectedForApproval.id);
+        if (remoteItem && remoteItem.status !== 'PENDING') {
+          setSelectedForApproval(remoteItem);
+          setError(t.concurrentConflictWarning);
+        }
+      }
+      if (selectedForRejection) {
+        const remoteItem = (res.requests || []).find(r => r.id === selectedForRejection.id);
+        if (remoteItem && remoteItem.status !== 'PENDING') {
+          setSelectedForRejection(remoteItem);
+          setError(t.concurrentConflictWarning);
+        }
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load recovery requests');
+      if (!isBackground) setError(err.message || 'Failed to load recovery requests');
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
+
+  // Build 9 Phase 1.5: Universal Change-Based Auto-Refresh
+  useAutoRefresh('recovery', () => {
+    fetchRequests(true);
+  });
 
   useEffect(() => {
     fetchRequests();
@@ -108,6 +131,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
       setActionToast(t.deleteRecoverySuccess);
       setTimeout(() => setActionToast(null), 4000);
       await fetchRequests();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setSingleError(err.message || 'Failed to delete recovery request');
     } finally {
@@ -138,6 +162,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
       setTimeout(() => setActionToast(null), 5000);
       setPage(1);
       await fetchRequests();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setBulkError(err.message || 'Failed to bulk delete recovery requests');
     } finally {
@@ -224,7 +249,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
             </button>
 
             <button
-              onClick={fetchRequests}
+              onClick={() => fetchRequests()}
               disabled={loading}
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
               title={t.refresh}
@@ -436,6 +461,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
           onClose={() => setSelectedForApproval(null)}
           onSuccess={() => {
             fetchRequests();
+            refreshCoordinator.triggerImmediateCheck();
           }}
         />
       )}
@@ -448,6 +474,7 @@ export const RecoveryRequestsModule: React.FC<RecoveryRequestsModuleProps> = ({ 
           onClose={() => setSelectedForRejection(null)}
           onSuccess={() => {
             fetchRequests();
+            refreshCoordinator.triggerImmediateCheck();
           }}
         />
       )}

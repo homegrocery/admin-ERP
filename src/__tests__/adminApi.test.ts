@@ -447,4 +447,138 @@ describe('Admin ERP API Client', () => {
       })
     );
   });
+
+  it('Build 9 Phase 1: activateAccount throws error when pending reactivation request exists', async () => {
+    adminApi.setToken('auth-token-xyz');
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      json: async () => ({
+        success: false,
+        error: 'Account has a pending reactivation request. Please review and approve/reject it from the Reactivation Requests module.',
+        code: 'PENDING_REACTIVATION_EXISTS'
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await expect(adminApi.activateAccount('usr-locked-with-request')).rejects.toThrow(
+      'Account has a pending reactivation request'
+    );
+  });
+
+  it('Build 9 Phase 1: getAccounts correctly parses has_pending_reactivation_request and status', async () => {
+    adminApi.setToken('auth-token-xyz');
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          accounts: [
+            {
+              id: 'usr-1',
+              mobile_number: '9876543210',
+              is_locked: true,
+              has_pending_reactivation_request: true,
+              pending_reactivation_request_id: 'req-react-1',
+              pending_reactivation_status: 'PENDING'
+            },
+            {
+              id: 'usr-2',
+              mobile_number: '9876543211',
+              is_locked: false,
+              has_pending_reactivation_request: false,
+              pending_reactivation_request_id: null,
+              pending_reactivation_status: null
+            }
+          ],
+          total: 2,
+          page: 1,
+          totalPages: 1
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await adminApi.getAccounts({ page: 1, limit: 10 });
+    expect(res.accounts).toHaveLength(2);
+    expect(res.accounts[0].has_pending_reactivation_request).toBe(true);
+    expect(res.accounts[0].pending_reactivation_request_id).toBe('req-react-1');
+    expect(res.accounts[1].has_pending_reactivation_request).toBe(false);
+  });
+
+  describe('Build 9 Phase 2: Default Admin Login & Mobile Privacy', () => {
+    it('adminApi.login(pin) sends PIN-only payload without mobileNumber for Default Admin', async () => {
+      const mockAdmin = {
+        id: 'usr-admin-owner',
+        mobile_number: '9356755100',
+        username: 'Default Admin',
+        role: 'admin' as const,
+        pin_length: 6
+      };
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            token: 'default-admin-jwt-token-999',
+            admin: mockAdmin
+          }
+        })
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const res = await adminApi.login('123456');
+
+      expect(res.token).toBe('default-admin-jwt-token-999');
+      expect(res.admin).toEqual(mockAdmin);
+      expect(adminApi.getToken()).toBe('default-admin-jwt-token-999');
+      expect(adminApi.getAdminUser()).toEqual(mockAdmin);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const callArgs = mockFetch.mock.calls[0];
+      expect(callArgs[0]).toBe('https://home-grocery-api.onrender.com/api/admin/auth/login');
+      const body = JSON.parse(callArgs[1].body);
+      expect(body).toEqual({
+        pin: '123456',
+        deviceInfo: 'Owner-Admin Web Console'
+      });
+      // Crucial privacy guarantee: no mobileNumber in payload
+      expect(body.mobileNumber).toBeUndefined();
+    });
+
+    it('adminApi.login(mobileNumber, pin) maintains backward compatibility when mobile is passed', async () => {
+      const mockAdmin = {
+        id: 'usr-admin-owner',
+        mobile_number: '9876543210',
+        username: 'Custom Admin',
+        role: 'admin' as const,
+        pin_length: 6
+      };
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            token: 'custom-admin-jwt-token-888',
+            admin: mockAdmin
+          }
+        })
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const res = await adminApi.login('9876543210', '654321');
+
+      expect(res.token).toBe('custom-admin-jwt-token-888');
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+      expect(body).toEqual({
+        pin: '654321',
+        deviceInfo: 'Owner-Admin Web Console',
+        mobileNumber: '9876543210'
+      });
+    });
+  });
 });

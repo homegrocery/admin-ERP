@@ -10,12 +10,14 @@ import {
   Menu,
   X,
   UserCog,
-  Unlock
+  Unlock,
+  Rocket
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import type { AdminUser } from '../types/admin';
+import { useFreshnessSummary, useAutoRefreshStatus } from '../hooks/useAutoRefresh';
 
-export type AdminTab = 'accounts' | 'reactivation' | 'recovery' | 'delete' | 'audit' | 'profile';
+export type AdminTab = 'accounts' | 'reactivation' | 'recovery' | 'delete' | 'audit' | 'profile' | 'releases';
 
 interface HeaderProps {
   currentTab: AdminTab;
@@ -36,13 +38,26 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const t = adminTranslations[lang];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const summary = useFreshnessSummary();
+  const syncStatus = useAutoRefreshStatus();
 
-  const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+  const tabs: { id: AdminTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'accounts', label: t.navAccounts, icon: <Users className="w-4 h-4" /> },
-    { id: 'reactivation', label: t.navReactivation || 'Reactivation Requests', icon: <Unlock className="w-4 h-4" /> },
-    { id: 'recovery', label: t.navRecovery, icon: <KeyRound className="w-4 h-4" /> },
+    {
+      id: 'reactivation',
+      label: t.navReactivation || 'Reactivation Requests',
+      icon: <Unlock className="w-4 h-4" />,
+      badge: summary?.pendingReactivations || 0
+    },
+    {
+      id: 'recovery',
+      label: t.navRecovery,
+      icon: <KeyRound className="w-4 h-4" />,
+      badge: summary?.pendingRecoveries || 0
+    },
     { id: 'delete', label: t.navDelete, icon: <UserX className="w-4 h-4" /> },
     { id: 'audit', label: t.navAudit, icon: <ShieldAlert className="w-4 h-4" /> },
+    { id: 'releases', label: t.navReleases, icon: <Rocket className="w-4 h-4" /> },
     { id: 'profile', label: t.navProfile, icon: <UserCog className="w-4 h-4" /> },
   ];
 
@@ -69,6 +84,35 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {t.ownerBadge}
                 </span>
+
+                {/* Live Sync Status Indicator (Build 9 Phase 1.5) */}
+                <div
+                  className={`hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium transition cursor-default ${
+                    !syncStatus.isConnected
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      : syncStatus.isPaused
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  }`}
+                  title={
+                    !syncStatus.isConnected
+                      ? t.syncError
+                      : syncStatus.isPaused
+                      ? t.syncPaused
+                      : t.syncConnected
+                  }
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      !syncStatus.isConnected
+                        ? 'bg-rose-400'
+                        : syncStatus.isPaused
+                        ? 'bg-amber-400'
+                        : 'bg-emerald-400 animate-pulse'
+                    }`}
+                  />
+                  <span>{t.liveSync}</span>
+                </div>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
                 {t.appSubtitle}
@@ -151,6 +195,11 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 animate-pulse">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -196,6 +245,11 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 animate-pulse">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}

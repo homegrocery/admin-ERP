@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
+import { refreshCoordinator } from '../services/refreshCoordinator';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import type { AuditLogItem } from '../types/admin';
 import { formatAuditTimestamp } from '../utils/dateUtils';
 
@@ -60,9 +62,9 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
   const [bulkArchivedDeleting, setBulkArchivedDeleting] = useState(false);
   const [bulkArchivedError, setBulkArchivedError] = useState<string | null>(null);
 
-  const fetchLogs = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchLogs = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    if (!isBackground) setError(null);
     try {
       const res = await adminApi.getAuditLogs({
         page,
@@ -75,11 +77,16 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
     } catch (err: any) {
-      setError(err.message || 'Failed to load audit logs');
+      if (!isBackground) setError(err.message || 'Failed to load audit logs');
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
+
+  // Build 9 Phase 1.5: Universal Change-Based Auto-Refresh
+  useAutoRefresh('audit', () => {
+    fetchLogs(true);
+  });
 
   useEffect(() => {
     fetchLogs();
@@ -99,6 +106,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
       setActionToast(t.archiveSuccessToast);
       setTimeout(() => setActionToast(null), 4000);
       await fetchLogs();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setError(err.message || 'Failed to archive audit log entry');
     } finally {
@@ -129,6 +137,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
       setTimeout(() => setActionToast(null), 5000);
       setPage(1);
       await fetchLogs();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setBulkError(err.message || 'Failed to bulk archive audit logs');
     } finally {
@@ -146,6 +155,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
       setActionToast(t.deleteArchivedLogSuccess);
       setTimeout(() => setActionToast(null), 4000);
       await fetchLogs();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setSingleArchivedError(err.message || 'Failed to delete archived audit log');
     } finally {
@@ -179,6 +189,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
       setTimeout(() => setActionToast(null), 5000);
       setPage(1);
       await fetchLogs();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setBulkArchivedError(err.message || 'Failed to bulk delete archived audit logs');
     } finally {
@@ -364,7 +375,7 @@ export const AuditLogsModule: React.FC<AuditLogsModuleProps> = ({ lang }) => {
             )}
 
             <button
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               disabled={loading}
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
               title={t.refresh}

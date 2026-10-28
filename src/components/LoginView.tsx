@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Phone, AlertCircle, Loader2, Globe } from 'lucide-react';
+import { Shield, ShieldCheck, Lock, AlertCircle, Loader2, Globe, Eye, EyeOff } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi } from '../services/adminApi';
 import type { AdminUser } from '../types/admin';
@@ -16,8 +16,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess
 }) => {
   const t = adminTranslations[lang];
-  const [mobileNumber, setMobileNumber] = useState('9356755100');
   const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,20 +25,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
     e.preventDefault();
     setError(null);
 
-    const cleanMobile = mobileNumber.trim();
-    if (!/^\d{10}$/.test(cleanMobile)) {
-      setError(lang === 'mr' ? 'कृपया वैध १०-अंकी मोबाईल नंबर प्रविष्ट करा.' : 'Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
-    if (!pin || (pin.length !== 4 && pin.length !== 6)) {
-      setError(lang === 'mr' ? 'PIN ४ किंवा ६ अंकांचा असावा.' : 'PIN must be 4 or 6 digits.');
+    const cleanPin = pin.trim();
+    if (!cleanPin || (cleanPin.length !== 4 && cleanPin.length !== 6)) {
+      setError(t.pinValidationLength);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await adminApi.login(cleanMobile, pin);
+      const res = await adminApi.login(cleanPin);
       onLoginSuccess(res.admin);
     } catch (err: any) {
       setError(err.message || t.invalidCredentials);
@@ -84,27 +79,30 @@ export const LoginView: React.FC<LoginViewProps> = ({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 1. Fixed Administrator Identity Label */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                {t.mobileNumber}
+                {t.adminIdentity}
               </label>
-              <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Phone className="w-4 h-4" />
+              <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-900/70 border border-slate-700/80 rounded-xl text-slate-200">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  required
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
-                  placeholder={t.mobilePlaceholder}
-                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition"
-                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-white tracking-wide">
+                    {t.defaultAdmin}
+                  </div>
+                  <div className="text-[11px] text-slate-400 truncate">
+                    {t.defaultAdminSubtitle}
+                  </div>
+                </div>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {t.statusActive}
+                </span>
               </div>
             </div>
 
+            {/* 2. Single PIN / Password Field with Eye Show/Hide */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                 {t.pinLabel}
@@ -114,15 +112,25 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPin ? 'text' : 'password'}
                   inputMode="numeric"
                   maxLength={6}
                   required
+                  autoFocus
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                   placeholder={t.pinPlaceholder}
-                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 tracking-widest transition"
+                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 tracking-widest font-mono transition"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 focus:outline-none transition"
+                  aria-label={showPin ? t.hidePin : t.showPin}
+                  title={showPin ? t.hidePin : t.showPin}
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

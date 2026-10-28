@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { adminTranslations, type Language } from '../i18n/adminTranslations';
 import { adminApi, normalizePhoneNumber } from '../services/adminApi';
+import { refreshCoordinator } from '../services/refreshCoordinator';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import type { AccountMetadata, DeletionResult, BulkDeletionResult } from '../types/admin';
 
 export const isOwnerAccount = (acc?: AccountMetadata | null): boolean => {
@@ -83,6 +85,7 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
       setShowBulkModal(false);
       setBulkPhrase('');
       await fetchAccounts();
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setBulkDeleteError(err.message || 'Failed to delete ordinary user accounts');
     } finally {
@@ -90,9 +93,9 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
     }
   };
 
-  const fetchAccounts = async (searchOverride?: string) => {
-    setLoadingAccounts(true);
-    setFetchError(null);
+  const fetchAccounts = async (searchOverride?: string, isBackground = false) => {
+    if (!isBackground) setLoadingAccounts(true);
+    if (!isBackground) setFetchError(null);
     try {
       const q = searchOverride !== undefined ? searchOverride.trim() : searchQuery.trim();
       const res = await adminApi.getAccounts({
@@ -102,12 +105,25 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
       });
       setAccounts(res.accounts || []);
       setTotalAccounts(res.total || 0);
+
+      // Conflict detection for open delete modal
+      if (targetAccount) {
+        const stillExists = (res.accounts || []).some(a => a.id === targetAccount.id);
+        if (!stillExists) {
+          setDeleteError(t.recordUpdatedRemotely);
+        }
+      }
     } catch (err: any) {
-      setFetchError(err.message || 'Failed to load user accounts');
+      if (!isBackground) setFetchError(err.message || 'Failed to load user accounts');
     } finally {
-      setLoadingAccounts(false);
+      if (!isBackground) setLoadingAccounts(false);
     }
   };
+
+  // Build 9 Phase 1.5: Universal Change-Based Auto-Refresh
+  useAutoRefresh('accounts', () => {
+    fetchAccounts(undefined, true);
+  });
 
   useEffect(() => {
     fetchAccounts();
@@ -170,6 +186,7 @@ export const DeleteAccountModule: React.FC<DeleteAccountModuleProps> = ({ lang }
       } else {
         await fetchAccounts();
       }
+      refreshCoordinator.triggerImmediateCheck();
     } catch (err: any) {
       setDeleteError(err.message || 'Failed to delete account');
     } finally {

@@ -15,7 +15,13 @@ import type {
   RecoveryRequestStatus,
   AccountLockResult,
   LoginAttemptItem,
-  ReactivationRequestItem
+  ReactivationRequestItem,
+  FreshnessMarkers,
+  FreshnessSummary,
+  WebsiteContentData,
+  PublicAnnouncementItem,
+  ReleaseRecordItem,
+  WebsiteOverviewData
 } from '../types/admin';
 
 export const ADMIN_ERP_CANONICAL_URL = 'https://homegrocery.github.io/admin-ERP/';
@@ -179,14 +185,18 @@ export const adminApi = {
     }
   },
 
-  async login(mobileNumber: string, pin: string): Promise<{ token: string; admin: AdminUser }> {
+  async login(mobileOrPin: string, maybePin?: string): Promise<{ token: string; admin: AdminUser }> {
+    const payload: { pin: string; deviceInfo: string; mobileNumber?: string } = {
+      pin: maybePin !== undefined ? maybePin : mobileOrPin,
+      deviceInfo: 'Owner-Admin Web Console'
+    };
+    if (maybePin !== undefined) {
+      payload.mobileNumber = mobileOrPin;
+    }
+
     const res = await this.request<{ token: string; admin?: AdminUser; user?: AdminUser }>('/api/admin/auth/login', {
       method: 'POST',
-      body: JSON.stringify({
-        mobileNumber,
-        pin,
-        deviceInfo: 'Owner-Admin Web Console'
-      })
+      body: JSON.stringify(payload)
     });
 
     const admin = res.admin || res.user;
@@ -512,5 +522,251 @@ export const adminApi = {
       ...res,
       logs: normalizedLogs
     };
+  },
+
+  /**
+   * Universal Change-Detection / Freshness Polling (Build 9 Phase 1.5)
+   * Fetches lightweight state markers and summary counts from /api/admin/system/freshness.
+   * If server responds with HTTP 304, returns { notModified: true } without payload.
+   */
+  async getFreshness(ifNoneMatch?: string | null): Promise<{
+    notModified: boolean;
+    etag?: string;
+    markers?: FreshnessMarkers;
+    summary?: FreshnessSummary;
+    serverTime?: string;
+  }> {
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const fullUrl = `${baseUrl}/api/admin/system/freshness`;
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (ifNoneMatch) {
+      headers['If-None-Match'] = `"${ifNoneMatch.replace(/W\/|"|'/g, '')}"`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (response.status === 304) {
+        return { notModified: true, etag: ifNoneMatch || undefined };
+      }
+
+      if (response.status === 401) {
+        this.clearSession();
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new CustomEvent('admin:session-expired'));
+        }
+        throw new Error('UNAUTHORIZED: Session expired');
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const rawEtag = response.headers.get('ETag');
+      const cleanEtag = rawEtag ? rawEtag.replace(/W\/|"|'/g, '').trim() : undefined;
+      const json = await response.json();
+      const payload = json?.data ?? json;
+
+      return {
+        notModified: false,
+        etag: payload?.etag || cleanEtag,
+        markers: payload?.markers,
+        summary: payload?.summary,
+        serverTime: payload?.serverTime
+      };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  },
+
+  // Build 9 Phase 2.5: Website & Release Control API Methods
+  async getWebsiteOverview(): Promise<WebsiteOverviewData> {
+    const res = await this.request<any>('/api/admin/website-control/overview');
+    return res?.data ?? res;
+  },
+
+  async getWebsiteContent(): Promise<{ published: { content: WebsiteContentData; revision: number; publishedAt: string | null }; draft: { content: WebsiteContentData; revision: number } }> {
+    const res = await this.request<any>('/api/admin/website-control/content');
+    return res?.data ?? res;
+  },
+
+  async saveWebsiteDraft(content: Partial<WebsiteContentData>): Promise<any> {
+    const res = await this.request<any>('/api/admin/website-control/content/draft', {
+      method: 'PUT',
+      body: JSON.stringify(content)
+    });
+    return res?.data ?? res;
+  },
+
+  async publishWebsiteContent(publishNotes?: string): Promise<any> {
+    const res = await this.request<any>('/api/admin/website-control/content/publish', {
+      method: 'POST',
+      body: JSON.stringify({ publishNotes })
+    });
+    return res?.data ?? res;
+  },
+
+  async getAdminAnnouncements(status?: string, category?: string): Promise<PublicAnnouncementItem[]> {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (category) params.set('category', category);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await this.request<any>(`/api/admin/website-control/announcements${qs}`);
+    const data = res?.data ?? res;
+    return Array.isArray(data) ? data : data?.announcements ?? [];
+  },
+
+  async createAnnouncement(data: {
+    titleEn?: string;
+    titleMr?: string;
+    title?: string;
+    contentEn?: string;
+    contentMr?: string;
+    content?: string;
+    category?: string;
+    status?: string;
+    expiresAt?: string | null;
+    safeLinks?: Array<{ label: string; url: string }>;
+  }): Promise<PublicAnnouncementItem> {
+    const res = await this.request<any>('/api/admin/website-control/announcements', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    const dataObj = res?.data ?? res;
+    return dataObj?.announcement ?? dataObj;
+  },
+
+  async updateAnnouncement(id: string, data: Partial<{
+    titleEn?: string;
+    titleMr?: string;
+    title?: string;
+    contentEn?: string;
+    contentMr?: string;
+    content?: string;
+    category?: string;
+    status?: string;
+    expiresAt?: string | null;
+    safeLinks?: Array<{ label: string; url: string }>;
+  }>): Promise<PublicAnnouncementItem> {
+    const res = await this.request<any>(`/api/admin/website-control/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    const dataObj = res?.data ?? res;
+    return dataObj?.announcement ?? dataObj;
+  },
+
+  async publishAnnouncement(id: string): Promise<PublicAnnouncementItem> {
+    const res = await this.request<any>(`/api/admin/website-control/announcements/${id}/publish`, {
+      method: 'POST'
+    });
+    const dataObj = res?.data ?? res;
+    return dataObj?.announcement ?? dataObj;
+  },
+
+  async unpublishAnnouncement(id: string): Promise<PublicAnnouncementItem> {
+    const res = await this.request<any>(`/api/admin/website-control/announcements/${id}/unpublish`, {
+      method: 'POST'
+    });
+    const dataObj = res?.data ?? res;
+    return dataObj?.announcement ?? dataObj;
+  },
+
+  async archiveAnnouncement(id: string): Promise<PublicAnnouncementItem> {
+    const res = await this.request<any>(`/api/admin/website-control/announcements/${id}/archive`, {
+      method: 'POST'
+    });
+    const dataObj = res?.data ?? res;
+    return dataObj?.announcement ?? dataObj;
+  },
+
+  async deleteAnnouncement(id: string): Promise<{ success: boolean }> {
+    const res = await this.request<any>(`/api/admin/website-control/announcements/${id}`, {
+      method: 'DELETE'
+    });
+    return res?.data ?? res;
+  },
+
+  async getReleases(): Promise<{ releases: ReleaseRecordItem[]; activeRelease: ReleaseRecordItem | null }> {
+    const res = await this.request<any>('/api/admin/website-control/releases');
+    return res?.data ?? res;
+  },
+
+  async createReleaseDraft(data: {
+    versionName: string;
+    buildNumber: number;
+    versionCode: number;
+    channel?: 'STABLE' | 'BETA';
+    releaseNotes?: string;
+    releaseNotesEn?: string;
+    releaseNotesMr?: string;
+    isMandatory?: boolean;
+    minSupportedBuild?: number;
+    apkFilename?: string;
+  }): Promise<ReleaseRecordItem> {
+    const res = await this.request<any>('/api/admin/website-control/releases', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    const dataObj = res?.data ?? res;
+    return dataObj?.release ?? dataObj;
+  },
+
+  async triggerReleaseBuild(id: string, buildMode?: string): Promise<any> {
+    const res = await this.request<any>(`/api/admin/website-control/releases/${id}/build`, {
+      method: 'POST',
+      body: JSON.stringify({ buildMode })
+    });
+    return res?.data ?? res;
+  },
+
+  async getReleaseLogs(id: string): Promise<any> {
+    const res = await this.request<any>(`/api/admin/website-control/releases/${id}/logs`);
+    return res?.data ?? res;
+  },
+
+  async verifyReleaseArtifact(id: string, sha256?: string, sizeBytes?: number, downloadUrl?: string): Promise<any> {
+    const res = await this.request<any>(`/api/admin/website-control/releases/${id}/verify-artifact`, {
+      method: 'POST',
+      body: JSON.stringify({ sha256, sizeBytes, downloadUrl })
+    });
+    return res?.data ?? res;
+  },
+
+  getReleaseDownloadUrl(id: string): string {
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const token = this.getToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${baseUrl}/api/admin/website-control/releases/${id}/download${tokenParam}`;
+  },
+
+  async publishRelease(id: string): Promise<any> {
+    const res = await this.request<any>(`/api/admin/website-control/releases/${id}/publish`, {
+      method: 'POST'
+    });
+    return res?.data ?? res;
+  },
+
+  async rollbackRelease(id: string, targetReleaseId?: string): Promise<any> {
+    const res = await this.request<any>(`/api/admin/website-control/releases/${id}/rollback`, {
+      method: 'POST',
+      body: JSON.stringify({ targetReleaseId })
+    });
+    return res?.data ?? res;
   }
 };

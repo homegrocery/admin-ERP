@@ -7,10 +7,12 @@ import { RecoveryRequestsModule } from './components/RecoveryRequestsModule';
 import { DeleteAccountModule } from './components/DeleteAccountModule';
 import { AuditLogsModule } from './components/AuditLogsModule';
 import { ProfileModule } from './components/ProfileModule';
+import { WebsiteReleaseControlModule } from './components/WebsiteReleaseControlModule';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { adminTranslations, type Language } from './i18n/adminTranslations';
 import { adminApi } from './services/adminApi';
 import type { AdminUser } from './types/admin';
+import { refreshCoordinator } from './services/refreshCoordinator';
 import { Loader2 } from 'lucide-react';
 
 export function App() {
@@ -67,6 +69,34 @@ export function App() {
     };
   }, []);
 
+  // Universal Auto-Refresh Coordinator Lifecycle (Build 9 Phase 1.5)
+  useEffect(() => {
+    if (adminUser) {
+      refreshCoordinator.start();
+    } else {
+      refreshCoordinator.stop();
+    }
+    return () => {
+      refreshCoordinator.stop();
+    };
+  }, [adminUser]);
+
+  // Sync profile if updated remotely
+  useEffect(() => {
+    if (!adminUser) return;
+    const unsub = refreshCoordinator.subscribeDomain('profile', async () => {
+      try {
+        const res = await adminApi.checkSession();
+        if (res?.admin) {
+          setAdminUser(res.admin);
+        }
+      } catch {
+        // ignore
+      }
+    });
+    return unsub;
+  }, [adminUser]);
+
   const handleLogout = async () => {
     await adminApi.logout();
     setAdminUser(null);
@@ -108,11 +138,17 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <ErrorBoundary>
-          {currentTab === 'accounts' && <AccountsModule lang={lang} />}
+          {currentTab === 'accounts' && (
+            <AccountsModule
+              lang={lang}
+              onNavigateToReactivation={() => setCurrentTab('reactivation')}
+            />
+          )}
           {currentTab === 'reactivation' && <ReactivationRequestsModule lang={lang} />}
           {currentTab === 'recovery' && <RecoveryRequestsModule lang={lang} />}
           {currentTab === 'delete' && <DeleteAccountModule lang={lang} />}
           {currentTab === 'audit' && <AuditLogsModule lang={lang} />}
+          {currentTab === 'releases' && <WebsiteReleaseControlModule lang={lang} />}
           {currentTab === 'profile' && adminUser && (
             <ProfileModule
               lang={lang}
